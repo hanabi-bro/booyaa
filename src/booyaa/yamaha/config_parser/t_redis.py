@@ -1,0 +1,313 @@
+import redis
+
+pp_selector_list = [
+    {
+        'id': '1',
+        'interface': 'lan2',
+        'address': None,
+        'filter_in': ['101097', '101098', '101099', '101100', '101112'],
+        'dynamic_filter_in': ['101900', '101901', '101902', '101903'],
+        'filter_out': ['101101', '101102', '101103', '101104', '101105', '101106', '101107', '101108', '101109', '101110', '101111', '101113'],
+        'dynamic_filter_out': [
+            '101100',
+            '101101',
+            '101102',
+            '101111',
+            '101112',
+            '101113',
+            '101114',
+            '101115',
+            '101116',
+            '101117',
+            '101118',
+            '101119',
+            '101120',
+            '101121',
+            '101122',
+            '101123',
+            '101124',
+            '101125',
+            '101126',
+            '101127',
+            '101128',
+            '101129',
+            '101130',
+            '101131',
+            '101132',
+            '101133',
+            '101201',
+            '101202',
+            '101203',
+            '101204',
+            '101205',
+            '101251',
+            '101301',
+            '101302',
+            '101303',
+            '101304',
+            '101305',
+            '101306',
+            '101307',
+            '101308',
+            '101309',
+            '101310',
+            '101331',
+            '101332',
+            '101333',
+            '101351',
+            '101352',
+            '101353',
+            '101354',
+            '101355',
+            '101401',
+            '101371',
+            '101372',
+            '101311',
+            '101334',
+            '101335',
+            '101336',
+            '101337',
+            '101402',
+            '101403',
+            '101404',
+            '101405',
+            '101406',
+            '101501',
+            '101502'
+        ],
+        'mtu': '1454'
+    }
+]
+
+filter_list = [
+    {'id': '100101', 'action': 'pass-log', 'src_addr': ['192.168.220.110'], 'dst_addr': ['192.168.220.1'], 'protocol': ['icmp'], 'src_port': ['*'], 'dst_port': ['*']},  
+    {
+        'id': '100104',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.110'],
+        'dst_addr': ['192.168.220.1'],
+        'protocol': ['*'],
+        'src_port': ['*'],
+        'dst_port': ['domain']
+    },
+    {'id': '100105', 'action': 'pass-log', 'src_addr': ['192.168.220.110'], 'dst_addr': ['*'], 'protocol': ['tcp'], 'src_port': ['*'], 'dst_port': ['*']},
+    {'id': '100107', 'action': 'pass-log', 'src_addr': ['192.168.220.9'], 'dst_addr': ['192.168.220.1'], 'protocol': ['icmp'], 'src_port': ['*'], 'dst_port': ['*']},    
+    {
+        'id': '100131',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.111', '192.168.220.112', '192.168.220.113'],
+        'dst_addr': ['192.168.220.1'],
+        'protocol': ['icmp'],
+        'src_port': ['*'],
+        'dst_port': ['*']
+    },
+    {'id': '100132', 'action': 'pass-log', 'src_addr': ['192.168.220.111'], 'dst_addr': ['192.168.220.1'], 'protocol': ['tcp'], 'src_port': ['*'], 'dst_port': ['22']},  
+    {
+        'id': '100133',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.111', '192.168.220.121', '192.168.220.112', '192.168.220.113'],
+        'dst_addr': ['192.168.220.1'],
+        'protocol': ['*'],
+        'src_port': ['*'],
+        'dst_port': ['domain']
+    },
+    {
+        'id': '100134',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.111', '192.168.220.121', '192.168.220.112', '192.168.220.113'],
+        'dst_addr': ['*'],
+        'protocol': ['tcp'],
+        'src_port': ['*'],
+        'dst_port': ['www', 'https', 'smtp']
+    },
+    {
+        'id': '100135',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.200', '192.168.220.205', '192.168.220.254'],
+        'dst_addr': ['192.168.220.1'],
+        'protocol': ['*'],
+        'src_port': ['*'],
+        'dst_port': ['domain']
+    },
+    {
+        'id': '100136',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.5', '192.168.220.200', '192.168.220.205', '192.168.220.254'],
+        'dst_addr': ['*'],
+        'protocol': ['tcp'],
+        'src_port': ['*'],
+        'dst_port': ['www', 'https', '465']
+    },
+    {
+        'id': '100137',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.5', '192.168.220.200', '192.168.220.205', '192.168.220.254'],
+        'dst_addr': ['*'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['ntp']
+    },
+    {'id': '100138', 'action': 'pass-log', 'src_addr': ['192.168.220.5'], 'dst_addr': ['192.168.220.1'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['domain']},  
+    {'id': '100139', 'action': 'pass-log', 'src_addr': ['192.168.220.5'], 'dst_addr': ['*'], 'protocol': ['tcp'], 'src_port': ['*'], 'dst_port': ['https', 'smtp']},     
+    {'id': '100140', 'action': 'pass-log', 'src_addr': ['192.168.220.111'], 'dst_addr': ['*'], 'protocol': ['udp'], 'src_port': ['*'], 'dst_port': ['ntp']},
+    {'id': '100141', 'action': 'pass-log', 'src_addr': ['192.168.220.9'], 'dst_addr': ['192.168.220.1'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['domain']},  
+    {'id': '100142', 'action': 'pass-log', 'src_addr': ['192.168.220.9'], 'dst_addr': ['*'], 'protocol': ['tcp'], 'src_port': ['*'], 'dst_port': ['smtp']},
+    {
+        'id': '100143',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.254'],
+        'dst_addr': ['192.168.220.1'],
+        'protocol': ['udp', 'tcp'],
+        'src_port': ['ntp'],
+        'dst_port': ['*']
+    },
+    {'id': '100144', 'action': 'pass-log', 'src_addr': ['192.168.220.250'], 'dst_addr': ['192.168.220.1'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['*']},     
+    {
+        'id': '100145',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.205'],
+        'dst_addr': ['210.146.14.120', '210.134.82.135'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['500', '4500']
+    },
+    {
+        'id': '100146',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.205'],
+        'dst_addr': ['3.113.71.105', '52.195.33.20'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['500', '4500']
+    },
+    {'id': '100199', 'action': 'reject', 'src_addr': ['*'], 'dst_addr': ['*'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['*']},
+    {
+        'id': '101097',
+        'action': 'pass-log',
+        'src_addr': ['35.73.23.132', '54.150.80.184', '35.73.229.143', '5.152.180.233', '15.152.68.40', '13.208.64.125', '3.112.0.154', '210.136.16.88'],
+        'dst_addr': ['192.168.220.110'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['10022']
+    },
+    {
+        'id': '101098',
+        'action': 'pass-log',
+        'src_addr': ['210.146.14.120', '210.134.82.135'],
+        'dst_addr': ['192.168.220.205'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['500', '4500']
+    },
+    {
+        'id': '101099',
+        'action': 'pass-log',
+        'src_addr': ['35.74.31.210'],
+        'dst_addr': ['192.168.220.110'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['15020']
+    },
+    {'id': '101100', 'action': 'reject', 'src_addr': ['*'], 'dst_addr': ['*'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['*']},
+    {'id': '101101', 'action': 'pass-log', 'src_addr': ['192.168.220.1'], 'dst_addr': ['*'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['domain']},
+    {
+        'id': '101102',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.110'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['www', 'https']
+    },
+    {'id': '101103', 'action': 'pass-log', 'src_addr': ['192.168.220.254'], 'dst_addr': ['*'], 'protocol': ['*'], 'src_port': ['*'], 'dst_port': ['domain']},
+    {
+        'id': '101104',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.111', '192.168.220.121', '192.168.220.112', '192.168.220.113'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['www', 'https', 'smtp']
+    },
+    {
+        'id': '101105',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.5', '192.168.220.200', '192.168.220.205', '192.168.220.254'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['www', 'https', '465']
+    },
+    {
+        'id': '101106',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.5', '192.168.220.200', '192.168.220.205', '192.168.220.254'],
+        'dst_addr': ['*'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['ntp']
+    },
+    {
+        'id': '101107',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.5'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['https', 'smtp']
+    },
+    {
+        'id': '101108',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.9'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['smtp']
+    },
+    {
+        'id': '101109',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.110'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['15020']
+    },
+    {
+        'id': '101110',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.110'],
+        'dst_addr': ['*'],
+        'protocol': ['tcpflag=0x0002/0x0017'],
+        'src_port': ['*'],
+        'dst_port': ['55020']
+    },
+    {
+        'id': '101111',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.205'],
+        'dst_addr': ['210.146.14.120', '210.134.82.135'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['500', '4500']
+    },
+    {
+        'id': '101112',
+        'action': 'pass-log',
+        'src_addr': ['3.113.71.105', '52.195.33.20'],
+        'dst_addr': ['192.168.220.205'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['500', '4500']
+    },
+    {
+        'id': '101113',
+        'action': 'pass-log',
+        'src_addr': ['192.168.220.205'],
+        'dst_addr': ['3.113.71.105', '52.195.33.20'],
+        'protocol': ['udp'],
+        'src_port': ['*'],
+        'dst_port': ['500', '4500']
+    }
+]

@@ -1,0 +1,6 @@
+view_key,view_name,config_name,default_value,width,visible
+eid,,eid,,25,
+comment,,comment,,25,
+interface,,interface,,25,
+remark,備考,remark,,25,
+member,,member,,25,

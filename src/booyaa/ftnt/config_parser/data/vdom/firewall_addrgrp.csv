@@ -1,0 +1,8 @@
+view_key,view_name,config_name,default_value,width,visible
+eid,,eid,,25,
+comment,,associated-interface,,25,
+type,,type,default,25,
+allow-routing,,allow-routing,,25,
+remark,備考,remark,,25,
+member,,member,,25,
+exclude-member,,exclude-member,,25,

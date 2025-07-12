@@ -1,0 +1,9 @@
+type,category,short_name,parser,plural,layout,header_width,value_width,sheet_name,sheet_title
+vdom,firewall_address,service,FirewallAddress,multi,horizontal,,,Address,Address
+vdom,firewall_addrgrp,service,ConfigObjectParser,multi,vertical,,,AddrGrp,AddrGrp
+vdom,firewall_service_custom,service,ConfigObjectParser,multi,horizontal,24,48,Service,Service
+vdom,firewall_service_group,service,ConfigObjectParser,multi,vertical,24,48,ServiceGrp,ServiceGrp
+vdom,firewall_vip,service,ConfigObjectParser,multi,horizontal,24,48,Vip,Vip
+vdom,firewall_vipgrp,service,ConfigObjectParser,multi,vertical,24,48,VipGroup,VipGroup
+vdom,firewall_ippool,service,ConfigObjectParser,multi,horizontal,24,48,Ippool,Ippool
+vdom,firewall_policy,service,FirewallPolicy,multi,horizontal,,,Policy,Policy
