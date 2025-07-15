@@ -1,5 +1,5 @@
 # from booyaa.ftnt.forti_api import FortiApi
-from booyaa.ftnt.api import FortiApi
+from booyaa.ftnt.api.forti_api import FortiApi
 
 
 target = '172.16.201.201'

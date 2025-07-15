@@ -1,6 +1,5 @@
 {
     "go.toolsEnvVars": {
-        "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
         "python.envFile": "${workspaceFolder}/.env",
         "python.analysis.extraPaths": ["src"],
         "python.analysis.typeCheckingMode": "basic",
