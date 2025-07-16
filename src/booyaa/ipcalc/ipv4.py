@@ -215,5 +215,5 @@ class IPv4:
 
 if __name__ == "__main__":
     ip = IPv4()
-    ip.ip_calc("192.168.1.1/")
+    ip.ip_calc("192.168.1.1/32")
     print(ip.to_dict())

@@ -24,7 +24,6 @@ from rich.live import Live
 from rich.table import Table
 import sys
 
-import booyaa.ipcalc.ipv4 as ipv4_calc
 from booyaa.ipcalc.ipv4 import IPv4
 
 ipv4_calc = IPv4()
