@@ -1,7 +1,7 @@
 ### Local ###
 *.pkl
 tmp/
-export/
+/export/
 results/
 *.dist/
 *.build/

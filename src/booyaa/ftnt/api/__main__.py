@@ -54,7 +54,7 @@ if __name__ == '__main__':
             console.print(f'Error! get backup {res['trace']} \nmsg:{res['msg']}\ncode: {res['code']}\noutput: {res['output']}')
             continue
 
-        from booyaa.ftnt.api.export.save_file import save_config
+        from booyaa.common.export.save_file import save_config
         # def save_config(self, content, fg_name, fg_alias, version, export_dir='./fg_config'):
 
         res = save_config(res['output'], fa.hostname, fa.fg_alias, fa.version, './fg_config')

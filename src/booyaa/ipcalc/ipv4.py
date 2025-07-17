@@ -91,8 +91,10 @@ class IPv4:
 
         return self.calc_result
 
-    def is_ip(self) -> bool:
-        parts = self.ip.split(".")
+    def is_ip(self, ip_str: Optional[str] = None) -> bool:
+        if ip_str is None:
+            ip_str = self.ip
+        parts = ip_str.split(".")
         if len(parts) != 4:
             return False
         for part in parts:
@@ -117,7 +119,7 @@ class IPv4:
         if ip_str.count('/') != 1:
             return False
         ip, mask = ip_str.split('/')
-        if not self.is_ip():
+        if not self.is_ip(ip_str):
             return False
         if not mask.isdigit() or not 0 <= int(mask) <= 32:
             return False

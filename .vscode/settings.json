@@ -1,9 +1,9 @@
 {
-    "go.toolsEnvVars": {
-        "python.envFile": "${workspaceFolder}/.env",
-        "python.analysis.extraPaths": ["src"],
-        "python.analysis.typeCheckingMode": "basic",
-        "python.testing.pytestEnabled": true,
-        "python.testing.pytestArgs": ["tests"]
-    }
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.analysis.extraPaths": ["src"],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.testing.pytestArgs": ["tests"],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+
 }

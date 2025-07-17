@@ -39,18 +39,19 @@ def update_table(ipinfo):
         table.add_column(i)
 
     for k, v in ipinfo.items():
+        if k == 'err_msg' and v == '':
+            continue
+        elif k == 'err_msg' and v:
+            table.add_row(str(k), str(v))
+            break
         table.add_row(str(k), str(v))
 
     return table
 
 
 def tui_run(ip_str):
-    if ipv4_calc.is_ipv4_format(ip_str) is True:
-        ipinfo = ipv4_calc.ip_calc(ip_str)
-        table = update_table(ipinfo)
-    else:
-        ipinfo = {'err_msg': [f'Invalid IPv4 address {ip_str}']}
-        table = update_table(ipinfo)
+    ipinfo = ipv4_calc.ip_calc(ip_str)
+    table = update_table(ipinfo)
 
     with Live(table, refresh_per_second=10) as live:
         live.refresh()
