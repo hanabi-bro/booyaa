@@ -6,12 +6,9 @@ from urllib.parse import urljoin
 import json
 from configparser import ConfigParser
 from pathlib import Path
-
 from traceback import format_exc
-
 from booyaa.ftnt.api.cmdb import Cmdb
 from booyaa.ftnt.api.monitor import Monitor
-
 
 
 class FortiApi():
@@ -86,7 +83,7 @@ class FortiApi():
         let['msg'] = f'read config.ini self.timeout: {self.timeout}'
         return let
 
-    def set_target(self, target, user, password, alias=None, timeout=30.0):
+    def set_target(self, target, user, password, alias=None, timeout=30.0, backup_dir=r'fg_config'):
         """ターゲットをセット
         Args:
             traget:
@@ -113,7 +110,7 @@ class FortiApi():
             self.fg_alias = alias
 
         # バックアップディレクトリ
-        self.backup_directory = r'./fg_config'
+        self.backup_directory = Path(backup_dir)
 
         # Fortigate　APIベースURL
         self.base_url = urljoin(f'https://{self.fg_addr}', 'api/v2/')

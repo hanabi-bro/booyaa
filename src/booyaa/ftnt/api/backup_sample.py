@@ -3,6 +3,9 @@ from booyaa.ftnt.api import FortiApi
 from rich.console import Console
 console = Console()
 
+
+## for test
+
 if __name__ == '__main__':
     fa = FortiApi()
     targets = [

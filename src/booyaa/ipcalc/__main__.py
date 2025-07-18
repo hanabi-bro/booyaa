@@ -4,22 +4,7 @@
 * ipv6 in progress
 
 """
-### メモ
-## structのフォーマット文字列
-# '!' ネットワークバイトオーダー(32bit)
-# 'I' 符号なし整数(32bit, unsigned integer)
-# 'B' バイト、'4B' = 'BBBB' = [0-255, 0-255, 0-255, 0-255]
-# 'L' 符号なし整数(32bitまたは64bit, unsigned long)
-#     プラットフォームにより変わる場合もあり、NWアドレス計算では'I'を使用したほうがよい
-#
-## rubyならこんな感じだったはず
-# [631271850].pack('N').unpack('CCCC').join('.')
-# => "37.160.113.170"
-# "37.160.113.170".split(".").map(&:to_i).pack('CCCC').unpack('N')[0]
-# => 631271850
-#
-## bit shiftで計算する場合、struct不要
-# from struct import pack, unpack
+
 from rich.live import Live
 from rich.table import Table
 import sys
