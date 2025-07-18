@@ -42,7 +42,7 @@ def update_table(ipinfo):
         if k == 'err_msg' and v == '':
             continue
         elif k == 'err_msg' and v:
-            table.add_row(str(k), str(v))
+            table.add_row(str(k), f'[red]{str(v)}[/]')
             break
         table.add_row(str(k), str(v))
 
@@ -50,7 +50,8 @@ def update_table(ipinfo):
 
 
 def tui_run(ip_str):
-    ipinfo = ipv4_calc.ip_calc(ip_str)
+    ipinfo = ipv4_calc.args_ip_str = ip_str
+    ipinfo = ipv4_calc.ip_calc()
     table = update_table(ipinfo)
 
     with Live(table, refresh_per_second=10) as live:

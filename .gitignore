@@ -3,16 +3,16 @@
 tmp/
 /export/
 results/
-*.dist/
-*.build/
 booya_log/
 fg_config/
 release/
 config.ini
 .flake8
 
-# Created by https://www.toptal.com/developers/gitignore/api/windows,django,python,vscode
-# Edit at https://www.toptal.com/developers/gitignore?templates=windows,django,python,vscode
+# nuitka
+nuitka-crash-report.xml
+*.dist/
+*.build/
 
 ### Django ###
 *.log
