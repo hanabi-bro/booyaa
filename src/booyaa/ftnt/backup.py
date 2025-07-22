@@ -2,11 +2,14 @@ from rich.live import Live
 from rich.table import Table
 from pathlib import Path
 import sys
+
 from booyaa.ftnt.api import FortiApi
+from booyaa.common.export.save_file import save_config
+
 from concurrent.futures import ThreadPoolExecutor
+from booyaa.common.fire_and_forget import fire_and_forget
 from signal import signal, SIGINT
 from time import sleep
-from lib.fire_and_forget import fire_and_forget
 
 
 class FortiBackup:
@@ -18,14 +21,16 @@ class FortiBackup:
         self.nomask = nomask
         for target_info in self.target_info_list:
             target_info.setdefault('progress', {})
+            target_info.setdefault('hostname', '')
             target_info['progress'].setdefault('login', {'result': '', 'msg': ''})
             target_info['progress'].setdefault('backup', {'result': '', 'msg': ''})
+            target_info['progress'].setdefault('save', {'result': '', 'msg': ''})
             target_info['progress'].setdefault('logout', {'result': '', 'msg': ''})
             target_info['progress'].setdefault('secondary_login', {'result': '', 'msg': ''})
             target_info['progress'].setdefault('secondary_backup', {'result': '', 'msg': ''})
             target_info['progress'].setdefault('secondary_logout', {'result': '', 'msg': ''})
         ftb = FortiApi()
-        self.backup_dir = ftb.backup_dir.resolve()
+        self.backup_dir = Path('fg_config')
 
     def bulk_run(self):
         """"""
@@ -54,70 +59,90 @@ class FortiBackup:
         ステータスなど確認して、HA mode a-pだったらバックアップのshowを取得
 
         """
-        api_ftb = ApiBackup()
-        let = api_ftb.set_target(target_info['target'], target_info['user'], target_info['password'], target_info['alias_name'])
-
-        # print(msg)
+        api_ftb = FortiApi()
+        let = api_ftb.set_target(target_info['target'], target_info['user'], target_info['password'], target_info['alias_name'], backup_dir=self.backup_dir)
 
         #---------------------#
         # Primary Backup
         #---------------------#
         func = [
             api_ftb.login,
-            api_ftb.get_backup,
+            api_ftb.monitor.system_config_backup.get,
+            save_config,
             api_ftb.logout,
         ]
-        func_name = ['login', 'backup', 'logout']
+        func_name = ['login', 'backup', 'save', 'logout']
+
+        func_dict = {
+            'login': api_ftb.login,
+            'backup': api_ftb.monitor.system_config_backup.get,
+            'save': save_config,
+            'logout': api_ftb.logout
+        }
 
         # primary node
-        for i, f in enumerate(func):
-            let = f()
-            target_info['progress'][func_name[i]]['msg'] = let['msg']
+        for func_name, func in func_dict.items():
+            if func_name == 'save':
+                func_args = [
+                    target_info['config'],
+                    api_ftb.hostname,
+                    api_ftb.fg_alias,
+                    api_ftb.version,
+                    self.backup_dir
+                ]
+            else:
+                func_args = []
+            
+            let = func(*func_args)
+
+            target_info['progress'][func_name]['msg'] = let['msg']
             if let['code'] == 0:
-                if func_name[i] == 'login':
+                if func_name == 'login':
                     target_info['hostname'] = api_ftb.hostname
-                target_info['progress'][func_name[i]]['result'] = 'OK'
+                elif func_name == 'backup':
+                    target_info['config'] = let['output']
+                target_info['progress'][func_name]['result'] = 'OK'
             else:
-                target_info['progress'][func_name[i]]['result'] = '[red]NG[/]'
+                target_info['progress'][func_name]['result'] = '[red]NG[/]'
                 target_info['message'] = let['msg']
                 return
 
-        if api_ftb.ha_mode != 'active-passive' or api_ftb.ha_mode == 'a-p':
-            return
+        # HA判定
+        # if api_ftb.ha_mode != 'active-passive' or api_ftb.ha_mode == 'a-p':
+        #     return
 
-        # secondary node
-        cli_ftb = CliBackup()
+        # # secondary node
+        # cli_ftb = CliBackup()
 
-        #========debug============
-        cli_ftb.display = True
-        #========debug============
+        # #========debug============
+        # cli_ftb.display = True
+        # #========debug============
 
-        let = cli_ftb.set_target(target_info['target'], target_info['user'], target_info['password'], target_info['alias_name'])
+        # let = cli_ftb.set_target(target_info['target'], target_info['user'], target_info['password'], target_info['alias_name'])
 
-        func = [
-            cli_ftb.login,
-            cli_ftb.get_backup,
-            cli_ftb.logout,
-        ]
-        func_name = ['login', 'backup', 'logout']
+        # func = [
+        #     cli_ftb.login,
+        #     cli_ftb.get_backup,
+        #     cli_ftb.logout,
+        # ]
+        # func_name = ['login', 'backup', 'logout']
 
-        for i, f in enumerate(func):
-            if func_name[i] == 'backup':
-                let = f(full=False, secondary=True)
-            else:
-                let = f()
-            target_info['progress'][func_name[i]]['msg'] += let['msg']
-            if let['code'] == 0:
-                if func_name[i] == 'login':
-                    target_info['hostname'] += f'\n{cli_ftb.secondary_hostname}'
-                target_info['progress'][func_name[i]]['result'] += '\nOK'
-            else:
-                target_info['progress'][func_name[i]]['result'] = '\n[red]NG[/]'
-                target_info['message'] = let['msg']
-                return
+        # for i, f in enumerate(func):
+        #     if func_name[i] == 'backup':
+        #         let = f(full=False, secondary=True)
+        #     else:
+        #         let = f()
+        #     target_info['progress'][func_name[i]]['msg'] += let['msg']
+        #     if let['code'] == 0:
+        #         if func_name[i] == 'login':
+        #             target_info['hostname'] += f'\n{cli_ftb.secondary_hostname}'
+        #         target_info['progress'][func_name[i]]['result'] += '\nOK'
+        #     else:
+        #         target_info['progress'][func_name[i]]['result'] = '\n[red]NG[/]'
+        #         target_info['message'] = let['msg']
+        #         return
 
         return
-
 
     def update_table(self):
         table = Table(title=f'FortiGate Backup\n{self.backup_dir.resolve()}')
@@ -159,7 +184,7 @@ class FortiBackup:
             self.multi_bulk_run()
             # SIGINT (Ctrl+C)をキャッチして停止
             def signal_handler(sig, frame):
-                self.ping_loop = False  # ping_loopはなぜかeventでは止まらない？？？
+                self.backup_loop = False  # ping_loopはなぜかeventでは止まらない？？？
 
             signal(SIGINT, signal_handler)
 
@@ -172,15 +197,15 @@ class FortiBackup:
 if __name__ == '__main__':
     dummy_target_list = [
         {
-            'target': '172.16.201.11:443',
+            'target': '172.16.201.201:443',
             'user': 'admin',
             'password': 'P@ssw0rd',
             'alias_name': 'LabFG01'
         },
         {
-            'target': '172.16.201.11',
-            'user': 'nwadmin',
-            'password': 'mypassword',
+            'target': '172.16.201.202',
+            'user': 'admin',
+            'password': 'P@ssw0rd',
             'alias_name': 'LabFG02'
         },
         # {
@@ -209,7 +234,7 @@ if __name__ == '__main__':
     ## target file csv
     forti_config_backup -f target.csv
     ### target csv format is below
-    <fortigate addr>,<username>,<passwod>,[optional]<logfile name>
+    <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>
     e.g.)
     ```
     172.16.201.201,admin,P@ssword,
@@ -230,6 +255,9 @@ if __name__ == '__main__':
     target_group.add_argument('-u', '--user', help='login user name')
     target_group.add_argument('-p', '--password', help='login password')
     target_group.add_argument('-n', '--name', help='[optional]logfile name, e.g.) log file prefix instead of hostname')
+
+    # セカンダリノード取得
+    parser.add_argument('-b', '--both', action='store_true')
 
     # ログ出力ディレクトリ指定
     parser.add_argument('-d', '--directory', default='./fg_config', help='backup directory path default is ./fg_config')
@@ -265,6 +293,7 @@ if __name__ == '__main__':
                 'password': target_info[2],
                 'alias_name': target_info[3] if len(target_info) > 3 else '',
                 'message': '',
+                'config': b'',
             })
 
     ftb = FortiBackup()

@@ -1,4 +1,4 @@
-from forti_api import FortiApi
+from booyaa.ftnt.api import FortiApi
 
 from rich.console import Console
 console = Console()

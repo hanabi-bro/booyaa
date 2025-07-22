@@ -44,6 +44,8 @@ class FortiApi():
 
         self.model = ''
 
+        self.config = b''
+
         self.manage_vdom = 'root'
         self.vdom_mode = ''
 
@@ -57,6 +59,7 @@ class FortiApi():
         self.secondary_ha_mode = ''
         self.secondary_ha_role = ''
         self.result_message = ''
+
         self.error = None
 
         self.timeout = 60.0
@@ -139,13 +142,17 @@ class FortiApi():
             req_format='data',
             res_format='text',
             timeout=60)
-        if let['code'] == 0 and len(let['output']) < 5:
+        # if let['code'] == 0 and len(let['output']) == 3:
+        if let['code'] == 0 and len(let['cookie']):
             let['msg'] = f'Login to {self.fg_addr}'
             # 成功時のbodyは,以下だがドキュメントによって多少違いがあるため正規表現では難しい。
                     # 認証エラーなどは、Web画面のHTMLが返ってくるので、成功時はline数が少ないことで判定する。
                     # <script language="javascript">
                     # document.location="/prompt?viewOnly&redir=%2F";
                     # </script>
+        else:
+            let['code'] = 1
+            let['msg'] = f'[Error] Login Faile {self.fg_addr}'
 
         # ログイン成功ならホスト名などnode infoを取得
         if let['code'] == 0 and node_info:
