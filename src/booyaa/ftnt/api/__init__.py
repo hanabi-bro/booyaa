@@ -58,6 +58,7 @@ class FortiApi():
         self.secondary_serial = ''
         self.secondary_ha_mode = ''
         self.secondary_ha_role = ''
+
         self.result_message = ''
 
         self.error = None
@@ -142,14 +143,16 @@ class FortiApi():
             req_format='data',
             res_format='text',
             timeout=60)
+
+        # 成功時のbodyは,以下だがドキュメントによって多少違いがあるため正規表現では難しい。
+                # 認証エラーなどは、Web画面のHTMLが返ってくるので、成功時はline数が少ないことで判定する。
+                # <script language="javascript">
+                # document.location="/prompt?viewOnly&redir=%2F";
+                # </script>
         # if let['code'] == 0 and len(let['output']) == 3:
+        # cookieのあるなしで成功判定に一旦仮変更して様子見
         if let['code'] == 0 and len(let['cookie']):
             let['msg'] = f'Login to {self.fg_addr}'
-            # 成功時のbodyは,以下だがドキュメントによって多少違いがあるため正規表現では難しい。
-                    # 認証エラーなどは、Web画面のHTMLが返ってくるので、成功時はline数が少ないことで判定する。
-                    # <script language="javascript">
-                    # document.location="/prompt?viewOnly&redir=%2F";
-                    # </script>
         else:
             let['code'] = 1
             let['msg'] = f'[Error] Login Faile {self.fg_addr}'
@@ -291,7 +294,10 @@ class FortiApi():
         self.version = f'{self.major}.{self.minor}.{self.patch}'
         self.model = res_data['model']
 
-        self.vdom_mode = res_data['state']['vdom_mode']
+        if res_data['state']['vdom_mode'] == "":
+            self.vdom_mode = "no-vdom"
+        else:
+            self.vdom_mode = "multi-vdom"
         self.manage_vdom = res_data['state']['management_vdom']
 
         self.ha_mode = res_data['ha_mode']
