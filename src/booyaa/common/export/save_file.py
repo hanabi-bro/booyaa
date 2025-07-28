@@ -18,7 +18,7 @@ def check_format(self, content):
         return "unknown"
 
 
-def save_config(content, fg_name, fg_alias, version, export_dir='./fg_config'):
+def save_config(content, fg_name, fg_alias, version, export_dir='./fg_config', format='bin'):
     major, minor, patch = version.split('.')
 
     if fg_alias:
@@ -26,7 +26,7 @@ def save_config(content, fg_name, fg_alias, version, export_dir='./fg_config'):
     else:
         config_file_name = f'{fg_name}_{major}_{minor}_{patch}_{timestamp()}.conf'
 
-    let = save_file(content, config_file_name, export_dir, format='bin', encode='utf-8')
+    let = save_file(content, config_file_name, export_dir, format=format, encode='utf-8')
 
     return let
 

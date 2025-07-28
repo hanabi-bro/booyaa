@@ -23,7 +23,8 @@ if __name__ == '__main__':
     )
     capi.login()
     # print(capi.cmdb.system_ha.get())
-    capi.get_node_info(capi)
+    # capi.get_node_info(capi)
+    print(capi.monitor.switch_controller_managed_switch.get())
 
     capi.logout()
 

@@ -2,6 +2,7 @@ from .system_csf import SystemCsf
 from .system_config_backup import SystemConfigBackup
 from .web_ui_state import WebUiState
 from .system_ha_statistics import SystemHaStatistics
+from .switch_controller_managed_switch import SwitchControllerManagedSwitch
 
 class Monitor:
     def __init__(self, api):
@@ -9,3 +10,4 @@ class Monitor:
         self.system_config_backup = SystemConfigBackup(api)
         self.web_ui_state = WebUiState(api)
         self.system_ha_statistics = SystemHaStatistics(api)
+        self.switch_controller_managed_switch = SwitchControllerManagedSwitch(api)

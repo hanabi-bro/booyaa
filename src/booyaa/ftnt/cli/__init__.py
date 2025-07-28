@@ -428,6 +428,20 @@ class FortiCli():
 
         return let
 
+    def direct_login_secondary(self, timeout=None):
+        let = self.login()
+        if let != 0:
+            return let
+        let = self.login_secondary()
+        return let
+
+    def direct_logout_secondary(self, timeout=None):
+        let = self.logout_secondary()
+        if let != 0:
+            return let
+        let = self.logout()
+        return let
+
     def config_global(self):
         cmd = 'config global'
         let = self.execute_command(cmd)
