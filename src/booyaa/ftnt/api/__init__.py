@@ -1,5 +1,3 @@
-# import requests
-# from requests.exceptions import Timeout, ConnectTimeout, ConnectionError, RequestException, HTTPError
 from httpx import Client
 from httpx import TimeoutException, ConnectTimeout, ConnectError, RequestError, HTTPStatusError
 from urllib.parse import urljoin
@@ -7,9 +5,10 @@ import json
 from configparser import ConfigParser
 from pathlib import Path
 from traceback import format_exc
+
 from booyaa.ftnt.api.cmdb import Cmdb
 from booyaa.ftnt.api.monitor import Monitor
-
+from booyaa.ftnt.api.get_node_info import get_node_info
 
 class FortiApi():
     def __init__(self):
@@ -30,6 +29,7 @@ class FortiApi():
 
         self.cmdb = Cmdb(self)
         self.monitor = Monitor(self)
+        self.get_node_info = get_node_info
 
         # self.read_config_ini(config_ini)
 
@@ -158,14 +158,8 @@ class FortiApi():
             let['msg'] = f'[Error] Login Faile {self.fg_addr}'
 
         # ログイン成功ならホスト名などnode infoを取得
-        if let['code'] == 0 and node_info:
-            res = self.get_node_info()
-            if res['code'] == 0:
-                let['msg'] = f'Login and get node info {self.fg_addr}, hostname {self.hostname}'
-            else:
-                # node info取得失敗
-                let['code'] == 1
-                let['msg'] = f'[Error] Login but Failed get node info {self.fg_addr}'
+        if node_info:
+            let = self.get_node_info(self)
 
         return let
 
@@ -277,7 +271,7 @@ class FortiApi():
             decode_content = content
         return decode_content
 
-    def get_node_info(self):
+    def _get_node_info(self):
         let = self.monitor.system_csf.get()
 
         if let['code'] != 0:
@@ -307,7 +301,7 @@ class FortiApi():
             ha_list = res_data['ha_list']
             for ha_info in ha_list:
                 if ha_info['hostname']  == self.hostname:
-                    next
+                    continue
                 else:
                     self.secondary_hostname = ha_info['hostname']
                     self.secondary_serial = ha_info['serial_no']
@@ -320,8 +314,6 @@ class FortiApi():
         self.ha_mgmt_status = let['output']['results']['ha-mgmt-status']
         self.ha_mgmt_interfaces = let['output']['results']['ha-mgmt-interfaces']
 
-
         let['msg'] = f'get node info {self.fg_addr}'
-
 
         return let

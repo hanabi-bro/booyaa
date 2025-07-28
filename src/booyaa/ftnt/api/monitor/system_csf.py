@@ -8,9 +8,6 @@ class SystemCsf:
         url = urljoin(self.api.base_url, 'monitor/system/csf')
         let = self.api.req(url, method='get')
 
-
-        print(let)
-
         if let['code'] == 0:
             let['msg'] = f'monitor/system/csf {self.api.fg_addr}'
             pass

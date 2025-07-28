@@ -9,7 +9,6 @@ class CheckApiResponse:
         self.api = FortiApi()
 
 
-
 if __name__ == '__main__':
     target = '172.16.201.201'
     user = 'admin'
@@ -24,7 +23,8 @@ if __name__ == '__main__':
     )
     capi.login()
     # print(capi.cmdb.system_ha.get())
-    print(capi.ha_mgmt_status)
-    print(capi.ha_mgmt_interfaces)
+    capi.get_node_info(capi)
+
     capi.logout()
+
 

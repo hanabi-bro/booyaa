@@ -65,14 +65,6 @@ class FortiBackup:
         #---------------------#
         # Primary Backup
         #---------------------#
-        func = [
-            api_ftb.login,
-            api_ftb.monitor.system_config_backup.get,
-            save_config,
-            api_ftb.logout,
-        ]
-        func_name = ['login', 'backup', 'save', 'logout']
-
         func_dict = {
             'login': api_ftb.login,
             'backup': api_ftb.monitor.system_config_backup.get,
@@ -305,22 +297,4 @@ if __name__ == '__main__':
 
 '''
 * 7.0には/system/cfsはまだない？7.0でGUI時のデバッグする。
-* get node checkで500で帰ってきてるけどエラー拾えていないので、見直し必要
-  2025-07-27   15:08.26   /home/mobaxterm  curl -k -b cookie.txt -X GET https://${FGADDR}/api/v2/monitor/system/csf?scope=global | jq
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   224  100   224    0     0   5893      0 --:--:-- --:--:-- --:--:--  6054
-{
-  "http_method": "GET",
-  "revision": "0.0.1",
-  "status": "error",
-  "http_status": 500,
-  "vdom": "root",
-  "path": "system",
-  "name": "csf",
-  "action": "",
-  "serial": "FG100FTK22027480",
-  "version": "v7.0.11",
-  "build": 489
-}
 '''
