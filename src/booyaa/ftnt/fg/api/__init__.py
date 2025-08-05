@@ -13,11 +13,11 @@ from booyaa.ftnt.fg.api.get_node_info import get_node_info
 class FortiApi():
     def __init__(self):
         """"""
-        self.addr = ''
-        self.port = ''
-        self.user = ''
-        self.password = ''
-        self.alias = ''
+        self.fg_addr = ''
+        self.fg_port = ''
+        self.fg_user = ''
+        self.fg_pass = ''
+        self.fg_alias = ''
 
         self.base_url = ''
         self.session = ''
@@ -104,20 +104,20 @@ class FortiApi():
         else:
             port = 443
 
-        self.addr = target
-        self.port = port
-        self.user = user
-        self.password = password
+        self.fg_addr = target
+        self.fg_port = port
+        self.fg_user = user
+        self.fg_pass = password
 
         # エリアス指定
         if alias is not None:
-            self.alias = alias
+            self.fg_alias = alias
 
         # バックアップディレクトリ
         self.backup_directory = Path(backup_dir)
 
         # Fortigate　APIベースURL
-        self.base_url = urljoin(f'https://{self.addr}', 'api/v2/')
+        self.base_url = urljoin(f'https://{self.fg_addr}', 'api/v2/')
 
         self.session = Client(verify=False, timeout=timeout, follow_redirects=True)
         self.session.headers.update({
@@ -125,19 +125,19 @@ class FortiApi():
             'Content-Type': 'application/json',
         })
 
-        let['msg'] = f'Set to {self.addr}, user: {self.user}'
+        let['msg'] = f'Set to {self.fg_addr}, user: {self.fg_user}'
 
         return let
 
     def login(self, node_info=True):
         """"""
         # ユーザ情報をセット
-        login_data = {'username': self.user, 'secretkey': self.password}
+        login_data = {'username': self.fg_user, 'secretkey': self.fg_pass}
 
-        # let = self.session.post(urljoin(f'https://{self.addr}', 'logincheck'), params=login_data)
+        # let = self.session.post(urljoin(f'https://{self.fg_addr}', 'logincheck'), params=login_data)
 
         let = self.req(
-            url=urljoin(f'https://{self.addr}','logincheck'),
+            url=urljoin(f'https://{self.fg_addr}','logincheck'),
             method='post',
             params=login_data,
             req_format='data',
@@ -152,10 +152,10 @@ class FortiApi():
         # if let['code'] == 0 and len(let['output']) == 3:
         # cookieのあるなしで成功判定に一旦仮変更して様子見
         if let['code'] == 0 and len(let['cookie']):
-            let['msg'] = f'Login to {self.addr}'
+            let['msg'] = f'Login to {self.fg_addr}'
         else:
             let['code'] = 1
-            let['msg'] = f'[Error] Login Faile {self.addr}'
+            let['msg'] = f'[Error] Login Faile {self.fg_addr}'
 
         # ログイン成功ならホスト名などnode infoを取得
         if node_info:
@@ -166,7 +166,7 @@ class FortiApi():
     def logout(self):
         """"""
         let = self.req(
-            url=urljoin(f'https://{self.addr}','logout'),
+            url=urljoin(f'https://{self.fg_addr}','logout'),
             method='post',
             res_format='text',
         )
@@ -224,19 +224,19 @@ class FortiApi():
 
         except TimeoutException as e:
             let['code'] = 1
-            let['msg'] = f'[Error] Session Timeout {self.addr},\nException: {e}'
+            let['msg'] = f'[Error] Session Timeout {self.fg_addr},\nException: {e}'
             let['trace'] = format_exc()
         except ConnectTimeout as e:
             let['code'] = 1
-            let['msg'] = f'[Error] Connection Timeout {self.addr},\nException: {e}'
+            let['msg'] = f'[Error] Connection Timeout {self.fg_addr},\nException: {e}'
             let['trace'] = format_exc()
         except ConnectError as e:
             let['code'] = 1
-            let['msg'] = f'[Error] Connection Error {self.addr},\nException: {e}'
+            let['msg'] = f'[Error] Connection Error {self.fg_addr},\nException: {e}'
             let['trace'] = format_exc()
         except RequestError as e:
             let['code'] = 1
-            let['msg'] = f'[Error] Request Exception {self.addr},\nException: {e}'
+            let['msg'] = f'[Error] Request Exception {self.fg_addr},\nException: {e}'
             let['trace'] = format_exc()
         except HTTPStatusError as e:
             # HTTPSstatusError!!!: Client error '404 Not Found' for url 'https://172.16.201.201/api/v2/hoge'
@@ -246,7 +246,7 @@ class FortiApi():
             let['trace'] = format_exc()
         except Exception as e:
             let['code'] = 1
-            let['msg'] = f'[Error] Exception {self.addr},\nException: {e}'
+            let['msg'] = f'[Error] Exception {self.fg_addr},\nException: {e}'
             let['trace'] = format_exc()
 
         finally:
@@ -314,6 +314,6 @@ class FortiApi():
         self.ha_mgmt_status = let['output']['results']['ha-mgmt-status']
         self.ha_mgmt_interfaces = let['output']['results']['ha-mgmt-interfaces']
 
-        let['msg'] = f'get node info {self.addr}'
+        let['msg'] = f'get node info {self.fg_addr}'
 
         return let

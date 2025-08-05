@@ -4,10 +4,11 @@ from paramiko import SSHClient, MissingHostKeyPolicy
 from paramiko_expect import SSHClientInteraction
 from re import search, findall
 
+from booyaa.ftnt.cli.get import Get
+from booyaa.ftnt.cli.show import Show
+from booyaa.ftnt.cli.execute import Execute
 
-from booyaa.ftnt.fg.cli.get import Get
-from booyaa.ftnt.fg.cli.show import Show
-from booyaa.ftnt.fg.cli.execute import Execute
+from booyaa.common.export.save_file import save_config
 
 # from sys import exc_info
 from traceback import format_exc
@@ -25,12 +26,11 @@ class NoHostKeyCheckPolicy(MissingHostKeyPolicy):
 
 class FortiCli():
     def __init__(self):
-        self.fg_addr = ''
-        self.fg_port = ''
-        self.fg_user = ''
-        self.fg_pass = ''
-        self.fg_alias = ''
-        self.fg_hostname = ''
+        self.addr = ''
+        self.port = ''
+        self.user = ''
+        self.password = ''
+        self.alias = ''
 
         self.session = ''
         self.root_dir = Path(__file__).parent.resolve()
@@ -56,8 +56,8 @@ class FortiCli():
 
         self.ha_mode = ''
         self.ha_role = ''
-        self.ha_mgmt_status = ''      # mgmt statusが有効ならHAは見ない
-        self.ha_mgmt_interfaces = []  # さらに念のため見るならmgmt_interfacesが1以上
+        self.ha_mgmt_status = ''      # @todo mgmt statusが有効ならHAは見ない
+        self.ha_mgmt_interfaces = []  # @todo さらに念のため見るならmgmt_interfacesが1以上
         self.exsist_secondary = ''
 
         self.secondary_hostname = ''
@@ -66,32 +66,29 @@ class FortiCli():
         self.secondary_ha_role = ''
 
         self.result_message = ''
-        self.error = None
 
         self.display = False
 
-        self.timeout = 60.0
-
+        self.timeout = 60
         self.interact = ''
-        self.PROMPT = [
-            r'([\r\n]+)?([\w_\-\.]+)\(([\w_\-\.]+)\)+#\s*',
-            # r'[\w_\-\.\(\) ]+#\s*',
+
+        self.FG_PROMPT = [
+            r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
             r'\-\-(?i:More)\-\-',
             r'(?i:Command fail\. Return code .*)',
             r'(?i:Unknown action .*)',
         ]
         self.SSH_PROMPT = [
             r'.*(?i:password):\s*',
-            r'[\w_\-\.\(\) ]+#\s*'
+            r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
             r'(?i:.*Could not manage member.*)',
             r'(?i: .*please try again.*)'
-            r'(?i:.*Could not manage member.*)',
             r'(?i:.*No route to host.*)',
             r'(?i:.*ssh_exchange_identification: read: Connection reset by peer.*)'
             r'(?i:.*reset by peer.*)'
         ]
 
-        self.primary_info_flg = False
+        self.node_info_flg = False
         self.secondary_info_flg = False
 
         # output_standardチェック
@@ -142,46 +139,56 @@ class FortiCli():
         else:
             port = 22
 
-        self.fg_addr = target
-        self.fg_port = port
-        self.fg_user = user
-        self.fg_pass = password
+        self.addr = target
+        self.port = port
+        self.user = user
+        self.password = password
 
         # エリアス指定
         if alias is not None:
-            self.fg_alias = alias
+            self.alias = alias
 
         # バックアップディレクトリ
-        self.backup_directory = backup_dir        # self.base_url = f'https://{self.fg_addr}/api/v2/'
+        self.backup_dir = backup_dir        # self.base_url = f'https://{self.addr}/api/v2/'
 
-        let['msg'] = f'Set to {self.fg_addr}, user: {self.fg_user}'
+        let['msg'] = f'Set to {self.addr}, user: {self.user}'
 
         return let
 
-    def login(self):
+    def login(self, addr=None, user=None, password=None, timeout=None):
         let = {'code': 0, 'msg': '', 'output': ''}
+        addr = addr or self.addr
+        _addr = addr.split(':')
+        if len(_addr) == 1:
+            addr = _addr[0]
+            port = 22
+        elif len(_addr) == 2:
+            addr = _addr[0]
+            port = int(_addr[1])
+
+        user = user or self.user
+        password = password or self.password
+        timeout = timeout or self.timeout
 
         try:
             self.session = SSHClient()
             self.session.set_missing_host_key_policy(NoHostKeyCheckPolicy())
             self.session.connect(
-                self.fg_addr,
-                self.fg_port,
-                self.fg_user,
-                self.fg_pass,
-                timeout=self.login_timeout
+                addr,
+                port,
+                user,
+                self.password,
+                timeout=timeout
             )
             # SSHのセッションをparamiko_expectに渡す
             self.interact = SSHClientInteraction(self.session, timeout=self.timeout, display=self.display)
 
-            let['msg'] = f'Login successful to {self.fg_addr} as {self.fg_user}'
+            let['msg'] = f'Login successful to {self.addr} as {self.user}'
             let['output'] = self.interact.current_output_clean
 
         except Exception as e:
             let['code'] = 1
-            let['msg'] = f'[Error] Session Timeout to login {self.fg_addr}'
-            self.error = format_exc()
-            print(e)
+            let['msg'] = f'[Error] Session Timeout to login {self.addr} {format_exc()}'
 
 
         # ログイン成功後、output standard設定変更
@@ -191,60 +198,60 @@ class FortiCli():
         # ログイン成功後にPrimaryとSecondaryの情報を取得
         # 毎回実施しないよう取得済みフラグたてておく
         try:
-            if not self.primary_info_flg:
+            if not self.node_info_flg:
                 let = self.get_node_info()
-                self.primary_info_flg = True
+                self.node_info_flg = True
         except Exception as e:
             let['code'] = 1
-            let['msg'] += f' get_node_info {self.fg_addr}'
-            self.error = format_exc()
+            let['msg'] += f'[Error] get_node_info {self.addr} {format_exc()}'
 
         return let
 
-    def exit(self, timeout=10.0):
+    def exit(self, timeout=5):
         let = {'code': 0, 'msg': '', 'output': ''}
-        try:
-            self.interact.send('exit')
-            self.interact.expect(self.PROMPT, timeout=timeout)
-            let['msg'] = f'logout from {self.fg_addr}'
 
-        except Exception as e:
-            let['code'] = 1
-            let['msg'] = f'[Error] logout fail {self.fg_addr}, Force session closed'
-
-
-        return let
-
-    def logout(self):
-        """ログアウト処理"""
-        let = {'code': 0, 'msg': '', 'output': ''}
-        if self.session:
-            try:
-                self.interact.send('exit')
-                self.interact.expect()
-                let['msg'] = f'logout from {self.fg_addr}'
-
-            except Exception as e:
-                let['code'] = 1
-                let['msg'] = f'[Error] logout fail {self.fg_addr}, Force session closed'
-
-            finally:
-                self.interact.close()
-                self.session.close()
+        self.interact.send('exit')
+        index = self.interact.expect(self.FG_PROMPT, timeout=timeout)
+        if index == 0:
+            let['code'] = 0
+            let['msg'] = 'exit'
         else:
             let['code'] = 1
-            let['msg'] = f'[Error] No active session {self.fg_addr}, Force session closed'
+            let['msg'] = f'[Error]Failed exit'
 
+        return let
+
+    def logout(self, timeout=5):
+        let = {'code': 0, 'msg': '', 'output': ''}
+        for i in range(3):
+            try:
+                self.interact.send('exit')
+                index = self.interact.expect(self.FG_PROMPT, timeout=timeout)
+                let['output'] = self.interact.current_output_clean
+
+                if index == -1:
+                    let['code'] = 0
+                    let['msg'] = f'logout from {self.hostname}'
+                    break
+            except Exception as e:
+                    let['code'] = 0
+                    let['msg'] = f'[Error]logout Failed Force session close{format_exc()}'
+
+        self.close()
+        return let
+
+    def close(self):
         self.interact.close()
         self.session.close()
-        return let
+    
+
 
     def execute_command(self, cmd, prompt=None, timeout=None, cmd_strip=False):
         """コマンドを実行し、結果を返す"""
         let = {'code': 0, 'msg': '', 'output': ''}
 
         timeout = timeout or self.timeout
-        prompt = prompt or self.PROMPT
+        prompt = prompt or self.FG_PROMPT
 
         try:
             self.interact.send(cmd)
@@ -297,7 +304,6 @@ class FortiCli():
                 if let['code'] != 0:
                     return let
         return let
-
 
     def get_node_info(self):
         """ノード情報を取得"""
@@ -396,12 +402,43 @@ class FortiCli():
 
         return let
 
+    def execute_ssh(self, addr, user, password, timeout=None):
+        let = {'code': 0, 'msg': '', 'output': ''}
+        timeout = timeout or self.timeout
+        #  vdomの場合は、globalに移動してSSHする
+        if self.vdom_mode == 'multi-vdom':
+            res = self.config_global()
+            # @todo グローバルモードであることの確認とエラー処理
+        
+        cmd = f'execute ssh {user}@{addr}'
+
+        self.interact.send(cmd)
+        index = self.interact.expect(self.SSH_PROMPT, timeout=timeout)
+        let['output'] = self.interact.current_output_clean
+
+        if index == 0:
+            # パスワード入力
+            self.interact.send(password)
+            index = self.interact.expect(self.FG_PROMPT, timeout=timeout)
+            #
+            # @todo ログインチェック
+            #
+            if index == 0:
+                let['code'] = 0
+                let['msg'] = f'ssh login to {addr}'
+
+        if index != 0:
+            let['code'] = index
+            let['msg'] = f'[Error]Falied {cmd} {self.SSH_PROMPT[index]}'
+
+        return let
+
     def login_secondary(self, timeout=None, secondary_user=None, secondary_pass=None):
         """セカンダリノードにログイン"""
         let = {'code': 0, 'msg': '', 'output': ''}
 
-        secondary_user = secondary_user or self.fg_user
-        secondary_pass = secondary_pass or self.fg_pass
+        secondary_user = secondary_user or self.user
+        secondary_pass = secondary_pass or self.password
         timeout = timeout or self.login_timeout
 
         #  vdomの場合は、globalに移動してSSHする
@@ -424,7 +461,7 @@ class FortiCli():
         if index == 0:
             # password prompt
             self.interact.send(secondary_pass)
-            self.interact.expect(self.PROMPT, timeout=timeout)
+            self.interact.expect(self.FG_PROMPT, timeout=timeout)
 
             # @todo sshログイン失敗処理
             let['code'] = 0
@@ -438,23 +475,14 @@ class FortiCli():
 
     def logout_secondary(self, timeout=5.0):
         """セカンダリノードからログアウト"""
-        let = {'code': 0, 'msg': '', 'output': ''}
-        timeout = timeout or self.login_timeout
-
-        # @todoセカンダリであることを確認
-
-        cmd = 'exit'
-        res = self.execute_command(cmd, timeout=timeout)
-
+        let = self.exit()
         # @todo ログアウト確認
 
         # vdomの場合は、Primary側はglobalモードで実行しているので、グローバルモードを終了する
         if self.vdom_mode == 'multi-vdom':
-            res = self.end_global()
+            let = self.end_global()
 
         # @todo エラー処理
-
-        let = res
 
         return let
 
@@ -473,9 +501,6 @@ class FortiCli():
             return let
         let = self.logout()
         return let
-
-        
-
 
     def config_global(self):
         cmd = 'config global'
@@ -516,13 +541,47 @@ class FortiCli():
 
         return let
 
-    def backup(self, full=False, cmd_strip=True):
-        return self.show.get(full=full, cmd_strip=cmd_strip)
+    def backup(self, full=False, cmd_strip=True, format='text', encode='utf-8', backup_dir=None):
+        backup_dir = backup_dir or self.backup_dir
+        let = self.show.get(full=full, cmd_strip=cmd_strip)
+        if let['code'] != 0:
+            return let
+        self.config = let['output']
+        let = save_config(
+            content=self.config,
+            hostname=self.hostname,
+            alias=self.alias,
+            version=self.version,
+            export_dir=self.backup_dir,
+            format=format,
+            encode=encode
+        )
+        return let
+
+    def backup_secondary(self, full=False, cmd_strip=True, format='text', encode='utf-8'):
+        let = self.login_secondary()
+        if let['code'] != 0:
+            return let
+        let = self.show.get(full=full, cmd_strip=cmd_strip)
+        self.secondary_config = let['output']
+        let = save_config(
+            content=self.secondary_config,
+            hostname=self.secondary_hostname,
+            alias=self.alias,
+            version=self.version,
+            export_dir=self.backup_dir,
+            format=format,
+            encode=encode
+        )
+        if let['code'] != 0:
+            return let
+        let = self.logout_secondary()
+        return let
 
 
 if __name__ == '__main__':
     cli = FortiCli()
-    cli.display = False  # デバッグ用に出力を有効化
+    cli.display = True  # デバッグ用に出力を有効化
     cli.set_target(
         user='admin',
         password='P@ssw0rd',
@@ -530,26 +589,14 @@ if __name__ == '__main__':
         alias='LABFG01',
     )
     let = cli.login()  # ログイン
-    console.print(let['msg'])
 
-    console.print(f'hostname: {cli.hostname}')
-    console.print(f'ha_mode: {cli.ha_mode}')
-    console.print(f'ha_role: {cli.ha_role}')
-    console.print(f'sec_hostname: {cli.secondary_hostname}')
-    console.print(f'sec_serial: {cli.secondary_serial}')
+    let = cli.execute_ssh(addr='10.255.1.1', user='admin', password='P@ssw0rd')
+    print(let)
+    let = cli.execute_command('get system status')
+    let = cli.exit()
 
-    let = cli.backup(full=False)  # バックアップ
-    # console.print(f'code: {let['code']}, msg: {let['msg']}')
-    with open('tmp/show.conf', 'w', encoding='utf-8') as f:
-        print(let['output'], file=f)
-    
-    let = cli.login_secondary()  # セカンダリノードにログイン
-    if let['code'] == 0:
-        let = cli.backup(full=False)  # バックアップ
-        # console.print(f'code: {let['code']}, msg: {let['msg']}')
-        with open('tmp/show2.conf', 'w', encoding='utf-8') as f:
-            print(let['output'], file=f)
-        let = cli.logout_secondary()  # セカンダリノードからログアウト
+    # let = cli.backup(full=False)  # バックアップ
+    # let = cli.backup_secondary()  # セカンダリノードにログイン
     
     # let = cli.config_global()  # グローバルモードに切り替え
     # print(let)
@@ -564,4 +611,3 @@ if __name__ == '__main__':
     # print(let)
 
     let = cli.logout()  # ログアウト
-    print(let['msg'])

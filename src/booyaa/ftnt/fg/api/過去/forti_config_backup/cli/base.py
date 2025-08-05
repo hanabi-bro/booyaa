@@ -4,11 +4,6 @@ from paramiko import SSHClient, MissingHostKeyPolicy
 from paramiko_expect import SSHClientInteraction
 from re import search, findall
 
-
-from booyaa.ftnt.fg.cli.get import Get
-from booyaa.ftnt.fg.cli.show import Show
-from booyaa.ftnt.fg.cli.execute import Execute
-
 # from sys import exc_info
 from traceback import format_exc
 
@@ -49,15 +44,11 @@ class FortiCli():
 
         self.model = ''
 
-        self.config = ''
-
         self.manage_vdom = 'root'
         self.vdom_mode = ''
 
         self.ha_mode = ''
         self.ha_role = ''
-        self.ha_mgmt_status = ''      # mgmt statusが有効ならHAは見ない
-        self.ha_mgmt_interfaces = []  # さらに念のため見るならmgmt_interfacesが1以上
         self.exsist_secondary = ''
 
         self.secondary_hostname = ''
@@ -70,36 +61,21 @@ class FortiCli():
 
         self.display = False
 
-        self.timeout = 60.0
-
         self.interact = ''
         self.PROMPT = [
-            r'([\r\n]+)?([\w_\-\.]+)\(([\w_\-\.]+)\)+#\s*',
-            # r'[\w_\-\.\(\) ]+#\s*',
-            r'\-\-(?i:More)\-\-',
+            r'[\r\n][\w_\-\.\(\) ]+#\s*',
+            r'[\w_\-\.\(\) ]+#\s*',
             r'(?i:Command fail\. Return code .*)',
             r'(?i:Unknown action .*)',
         ]
         self.SSH_PROMPT = [
             r'.*(?i:password):\s*',
+            r'(?i:.*Could not manage member.*)',
             r'[\w_\-\.\(\) ]+#\s*'
-            r'(?i:.*Could not manage member.*)',
-            r'(?i: .*please try again.*)'
-            r'(?i:.*Could not manage member.*)',
-            r'(?i:.*No route to host.*)',
-            r'(?i:.*ssh_exchange_identification: read: Connection reset by peer.*)'
-            r'(?i:.*reset by peer.*)'
         ]
 
         self.primary_info_flg = False
         self.secondary_info_flg = False
-
-        # output_standardチェック
-        self.output_standard_flg = False
-
-        self.get = Get(self)
-        self.show = Show(self)
-        self.execute = Execute(self)
 
     def read_config_ini(self, config_ini=None):
         let = {'code': 0, 'msg': '', 'output': ''}
@@ -124,7 +100,7 @@ class FortiCli():
         let['msg'] = f'read config.ini login_timeout: {self.login_timeout}, timeout: {self.timeout}'
         return let
 
-    def set_target(self, target, user, password, alias=None, timeout=30.0, backup_dir=r'fg_config'):
+    def set_target(self, target, user, password, alias=None, port=22):
         """ターゲットをセット
         Args:
             traget:
@@ -134,13 +110,6 @@ class FortiCli():
             port:
         """
         let = {'code': 0, 'msg': '', 'output': ''}
-
-        # ポート指定がある場合
-        if ':' in target:
-            _, port = target.split(':')
-            port = int(port)
-        else:
-            port = 22
 
         self.fg_addr = target
         self.fg_port = port
@@ -152,7 +121,7 @@ class FortiCli():
             self.fg_alias = alias
 
         # バックアップディレクトリ
-        self.backup_directory = backup_dir        # self.base_url = f'https://{self.fg_addr}/api/v2/'
+        self.backup_directory = r'./fg_config'        # self.base_url = f'https://{self.fg_addr}/api/v2/'
 
         let['msg'] = f'Set to {self.fg_addr}, user: {self.fg_user}'
 
@@ -164,32 +133,21 @@ class FortiCli():
         try:
             self.session = SSHClient()
             self.session.set_missing_host_key_policy(NoHostKeyCheckPolicy())
-            self.session.connect(
-                self.fg_addr,
-                self.fg_port,
-                self.fg_user,
-                self.fg_pass,
-                timeout=self.login_timeout
-            )
+            self.session.connect(self.fg_addr, self.fg_port, self.fg_user, self.fg_pass, timeout=self.login_timeout)
             # SSHのセッションをparamiko_expectに渡す
             self.interact = SSHClientInteraction(self.session, timeout=self.timeout, display=self.display)
 
             let['msg'] = f'Login successful to {self.fg_addr} as {self.fg_user}'
             let['output'] = self.interact.current_output_clean
 
+            # ログイン成功後にPrimaryとSecondaryの情報を取得
+            # 毎回実施しないよう取得済みならスキップ
         except Exception as e:
             let['code'] = 1
             let['msg'] = f'[Error] Session Timeout to login {self.fg_addr}'
             self.error = format_exc()
             print(e)
 
-
-        # ログイン成功後、output standard設定変更
-        if self.output_standard_flg is False:
-            self.output_standard()
-
-        # ログイン成功後にPrimaryとSecondaryの情報を取得
-        # 毎回実施しないよう取得済みフラグたてておく
         try:
             if not self.primary_info_flg:
                 let = self.get_node_info()
@@ -198,19 +156,7 @@ class FortiCli():
             let['code'] = 1
             let['msg'] += f' get_node_info {self.fg_addr}'
             self.error = format_exc()
-
-        return let
-
-    def exit(self, timeout=10.0):
-        let = {'code': 0, 'msg': '', 'output': ''}
-        try:
-            self.interact.send('exit')
-            self.interact.expect(self.PROMPT, timeout=timeout)
-            let['msg'] = f'logout from {self.fg_addr}'
-
-        except Exception as e:
-            let['code'] = 1
-            let['msg'] = f'[Error] logout fail {self.fg_addr}, Force session closed'
+            print(e)
 
 
         return let
@@ -218,6 +164,7 @@ class FortiCli():
     def logout(self):
         """ログアウト処理"""
         let = {'code': 0, 'msg': '', 'output': ''}
+
         if self.session:
             try:
                 self.interact.send('exit')
@@ -230,16 +177,14 @@ class FortiCli():
 
             finally:
                 self.interact.close()
-                self.session.close()
+                self.session.close
         else:
             let['code'] = 1
             let['msg'] = f'[Error] No active session {self.fg_addr}, Force session closed'
 
-        self.interact.close()
-        self.session.close()
         return let
 
-    def execute_command(self, cmd, prompt=None, timeout=None, cmd_strip=False):
+    def execute_command(self, cmd, prompt=None, timeout=None):
         """コマンドを実行し、結果を返す"""
         let = {'code': 0, 'msg': '', 'output': ''}
 
@@ -248,97 +193,88 @@ class FortiCli():
 
         try:
             self.interact.send(cmd)
-            # index = self.interact.expect(prompt, timeout=timeout)
-            output = ""
-            while True:
-                index = self.interact.expect(prompt, timeout=timeout)
-                output += self.interact.current_output_clean
+            index = self.interact.expect(prompt, timeout=timeout)
+            let['output'] = self.interact.current_output_clean
 
-                if index == 0:
-                    break
-                elif index == 1:
-                    self.interact.send(' ')
-
-            let['output'] = output
-
-            if index <= 1:
+            if index == 0 or index == 1:
                 let['code'] = 0
-                if cmd_strip:
-                    # 入力コマンドを削除
-                    if let['output'].startswith(cmd):
-                        let['output'] = let['output'][len(cmd):].lstrip()
-
             else:
                 let['code'] = 1
-                let['msg'] =  f'Error: Net Expect Return: [{cmd}]\n'
+                let['msg'] =  f'Error: Net Expect Return: {cmd}\n'
 
         except Exception as e:
             let['code'] = 1
-            let['msg'] = f'Error: execute comand [{cmd}], Exception: {e}'
+            let['msg'] = f'Error: execute comand [{self.cmd}], Exception: {e}'
 
         return let
-
-    def output_standard(self):
-        cmd = 'show system console'
-        let = self.execute_command(cmd)
-        _standard = search(r'set output standard', let['output'])
-        if not _standard:
-            let = self.execute_command(cmd)
-            if let['code'] != 0:
-                return let
-            self.output_standard_flg = True
-            cmds = [
-                'config system console',
-                'set output standard',
-                'end'
-            ]
-            for cmd in cmds:
-                let = self.execute_command(cmd)
-                if let['code'] != 0:
-                    return let
-        return let
-
 
     def get_node_info(self):
         """ノード情報を取得"""
-        let = self.get.system_status.get()
+        let = {'code': 0, 'msg': '', 'output': ''}
+
+        cmd = 'get system status'
+        res = self.execute_command(cmd)
 
         # コマンド実行エラー時は終了
-        if let['code'] != 0:
+        if res['code'] != 0:
+            let['code'] = res['code']
+            let['msg'] = f'{res['msg']}[get_node_info]'
+            let['output'] = res['output']
             return let
 
-        # ホスト名の抽出
-        self.hostname = self.get.system_status.hostname
+        let = res
+
+        # バージョン情報の抽出
+        _versions = search(r'Version: *\S+ *v(\d+).(\d+).(\d+),build(\d+)', res['output'])
+        if _versions:
+            self.major, self.minor, self.patch, self.build = _versions.group(1,2,3,4)
+            self.version = f'{self.major}.{self.minor}.{self.patch}'
 
         # シリアル番号の抽出
-        self.serial = self.get.system_status.serial
+        _serial = search(r'Serial-Number: *(\S+)', res['output'])
+        if _serial:
+            self.serial = _serial.group(1)
 
-        # モデル, バージョン情報の抽出
-        self.model = self.get.system_status.model
-        self.major = self.get.system_status.major
-        self.minor = self.get.system_status.minor
-        self.patch = self.get.system_status.patch
-        self.build = self.get.system_status.build
-        self.version = self.get.system_status.version
+        # ホスト名の抽出
+        _hostname = search(r'Hostname: *(\S+)', res['output'])
+        if _hostname:
+            self.hostname = _hostname.group(1)
 
         # manage vdom domainの抽出
-        self.manage_vdom = self.get.system_status.manage_vdom
+        _manage_vdom = search(r'Current virtual domain: *(\S+)', res['output'])
+        if _manage_vdom:
+            self.manage_vdom = _manage_vdom.group(1)
 
         # Virtual domain configuration
-        # novdom: no-vdom, vdom: multi-vdom
-        self.vdom_mode = self.get.system_status.vdom_mode
+        # novdom: disable, vdom: multiple
+        _vdom_mode = search(r'Virtual domain configuration: *(\S+)', res['output'])
+        if _vdom_mode:
+            # vdomモードの抽出
+            if _vdom_mode.group(1).lower() == 'disable':
+                self.vdom_mode = 'novdom'
+            elif _vdom_mode.group(1).lower() == 'multiple':
+                self.vdom_mode = 'multiple'
 
         # HAモードとHA roleの抽出
-        self.ha_mode = self.get.system_status.ha_mode
-        self.ha_role = self.get.system_status.ha_role
+        _ha_mode = search(r'Current HA mode: *(\S+)(?:, *(\S+))', res['output'])
 
-        # HAならHAノード情報の抽出
-        let = self.get.system_ha_status.get()
-        if let['code'] != 0:
-            return let
-        
-        self.secondary_hostname = self.get.system_ha_status.secondary_hostname
-        self.secondary_serial = self.get.system_ha_status.secondary_serial
+        if _ha_mode:
+            if _ha_mode.group(1) == 'a-a':
+                self.ha_mode = 'active-active'
+            elif _ha_mode.group(1) == 'a-p':
+                self.ha_mode = 'active-passive'
+            else:
+                self.ha_mode = 'standalone'
+
+            self.ha_role = _ha_mode.group(2) if _ha_mode.lastindex >= 2 else None
+
+            res = self.get_ha_node_info()
+            if res['code'] != 0:
+                return res
+            else:
+                let['code'] = 0
+                let['msg'] = 'get node info {selfe.fg_addr}'
+                let['output'] += res['output']
 
         # @todo ノードのエリアス取得
 
@@ -350,7 +286,7 @@ class FortiCli():
         let = {'code': 0, 'msg': '', 'output': ''}
 
         # VDOMモードの場合はglobaに移動
-        if self.vdom_mode == 'multi-vdom':
+        if self.vdom_mode == 'multiple':
             let = self.config_global()
             if let['code'] != 0:
                 let['msg'] = f'{let['msg']} [get_ha_node_info]'
@@ -386,7 +322,7 @@ class FortiCli():
         let = res
 
         # globalモードを終了
-        if self.vdom_mode == 'multi-vdom':
+        if self.vdom_mode == 'multiple':
             res = self.end_global()
             if res['code'] != 0:
                 let['code'] = res['code']
@@ -405,7 +341,7 @@ class FortiCli():
         timeout = timeout or self.login_timeout
 
         #  vdomの場合は、globalに移動してSSHする
-        if self.vdom_mode == 'multi-vdom':
+        if self.vdom_mode == 'multiple':
             res = self.config_global()
             # @todo グローバルモードであることの確認とエラー処理
 
@@ -414,7 +350,7 @@ class FortiCli():
         index = self.interact.expect(self.SSH_PROMPT, timeout=timeout)
 
         # Could not manage memberが返ったら、ID0にして再実施
-        if index == 2:
+        if index == 1:
             # セカンダリノードが存在しない場合
             cmd = f'execute ha manage 0 {secondary_user}'
             self.interact.send(cmd)
@@ -422,11 +358,8 @@ class FortiCli():
             let['output'] = self.interact.current_output_clean
 
         if index == 0:
-            # password prompt
             self.interact.send(secondary_pass)
             self.interact.expect(self.PROMPT, timeout=timeout)
-
-            # @todo sshログイン失敗処理
             let['code'] = 0
             let['msg'] = f'Login to secondary({self.secondary_hostname})'
 
@@ -436,7 +369,7 @@ class FortiCli():
 
         return let
 
-    def logout_secondary(self, timeout=5.0):
+    def logout_secondary(self, timeout=None):
         """セカンダリノードからログアウト"""
         let = {'code': 0, 'msg': '', 'output': ''}
         timeout = timeout or self.login_timeout
@@ -449,7 +382,7 @@ class FortiCli():
         # @todo ログアウト確認
 
         # vdomの場合は、Primary側はglobalモードで実行しているので、グローバルモードを終了する
-        if self.vdom_mode == 'multi-vdom':
+        if self.vdom_mode == 'multiple':
             res = self.end_global()
 
         # @todo エラー処理
@@ -458,26 +391,8 @@ class FortiCli():
 
         return let
 
-    def bastion_login_secondary(self, timeout=None):
-        # FGにSSHしていなかったらFGにログイン
-        if not self.session.get_transport().is_active():
-            let = self.login()
-            if let['code'] != 0:
-                return let
-        let = self.login_secondary()
-        return let
-
-    def bastion_logout_secondary(self, timeout=None):
-        let = self.logout_secondary()
-        if let['code'] != 0:
-            return let
-        let = self.logout()
-        return let
-
-        
-
-
     def config_global(self):
+        let = {'code': 0, 'msg': '', 'output': ''}
         cmd = 'config global'
         let = self.execute_command(cmd)
         if let['code'] != 0:
@@ -487,6 +402,7 @@ class FortiCli():
 
     def end_global(self):
         # @todo グローバルモードであることを確認
+        let = {'code': 0, 'msg': '', 'output': ''}
         cmd = 'end'
         let = self.execute_command(cmd)
         if let['code'] != 0:
@@ -496,6 +412,7 @@ class FortiCli():
 
     def config_vdom(self, vdom_name=None):
         """VDOM設定モードに入る"""
+        let = {'code': 0, 'msg': '', 'output': ''}
         vdom_name = vdom_name or self.manage_vdom
         cmd = f'config vdom {vdom_name}'
         let = self.execute_command(cmd)
@@ -508,6 +425,7 @@ class FortiCli():
     def end_vdom(self):
         """VDOM設定モードを終了"""
         # @todo vdomモードにいることを確認
+        let = {'code': 0, 'msg': '', 'output': ''}
         cmd = 'end'
         let = self.execute_command(cmd)
         if let['code'] != 0:
@@ -516,52 +434,35 @@ class FortiCli():
 
         return let
 
-    def backup(self, full=False, cmd_strip=True):
-        return self.show.get(full=full, cmd_strip=cmd_strip)
-
-
 if __name__ == '__main__':
     cli = FortiCli()
-    cli.display = False  # デバッグ用に出力を有効化
+    cli.display = True  # デバッグ用に出力を有効化
     cli.set_target(
         user='admin',
         password='P@ssw0rd',
-        target='172.16.201.201',
-        alias='LABFG01',
+        target='172.16.201.6',
+        alias='LABFG0LABFG01',
     )
     let = cli.login()  # ログイン
-    console.print(let['msg'])
+    print(let)
 
-    console.print(f'hostname: {cli.hostname}')
-    console.print(f'ha_mode: {cli.ha_mode}')
-    console.print(f'ha_role: {cli.ha_role}')
-    console.print(f'sec_hostname: {cli.secondary_hostname}')
-    console.print(f'sec_serial: {cli.secondary_serial}')
-
-    let = cli.backup(full=False)  # バックアップ
-    # console.print(f'code: {let['code']}, msg: {let['msg']}')
-    with open('tmp/show.conf', 'w', encoding='utf-8') as f:
-        print(let['output'], file=f)
-    
     let = cli.login_secondary()  # セカンダリノードにログイン
+
     if let['code'] == 0:
-        let = cli.backup(full=False)  # バックアップ
-        # console.print(f'code: {let['code']}, msg: {let['msg']}')
-        with open('tmp/show2.conf', 'w', encoding='utf-8') as f:
-            print(let['output'], file=f)
         let = cli.logout_secondary()  # セカンダリノードからログアウト
-    
-    # let = cli.config_global()  # グローバルモードに切り替え
-    # print(let)
+        print(let)
 
-    # let = cli.end_global()  # グローバルモードを終了
-    # print(let)
+    let = cli.config_global()  # グローバルモードに切り替え
+    print(let)
 
-    # let = cli.config_vdom() # VDOM設定モードに入る
-    # print(let)
+    let = cli.end_global()  # グローバルモードを終了
+    print(let)
 
-    # let = cli.end_vdom()  # VDOM設定モードを終了
-    # print(let)
+    let = cli.config_vdom() # VDOM設定モードに入る
+    print(let)
+
+    let = cli.end_vdom()  # VDOM設定モードを終了
+    print(let)
 
     let = cli.logout()  # ログアウト
-    print(let['msg'])
+    print(let)

@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from booyaa.common.timestamp import timestamp
 
+from traceback import format_exc
+
 
 def check_format(self, content):
     if isinstance(content, str):
@@ -18,15 +20,15 @@ def check_format(self, content):
         return "unknown"
 
 
-def save_config(content, fg_name, fg_alias, version, export_dir='./fg_config', format='bin'):
+def save_config(content, hostname, alias, version, export_dir='./fg_config', format='bin', encode='utf-8'):
     major, minor, patch = version.split('.')
 
-    if fg_alias:
-        config_file_name = f'{fg_alias}_{fg_name}_{major}_{minor}_{patch}_{timestamp()}.conf'
+    if alias:
+        config_file_name = f'{alias}_{hostname}_{major}_{minor}_{patch}_{timestamp()}.conf'
     else:
-        config_file_name = f'{fg_name}_{major}_{minor}_{patch}_{timestamp()}.conf'
+        config_file_name = f'{hostname}_{major}_{minor}_{patch}_{timestamp()}.conf'
 
-    let = save_file(content, config_file_name, export_dir, format=format, encode='utf-8')
+    let = save_file(content, config_file_name, export_dir, format=format, encode=encode)
 
     return let
 
@@ -51,7 +53,7 @@ def save_file(content, export_name, export_dir='.', format=None, encode='utf-8')
 
     try:
         if format == json or format == 'text':
-            with open(export_file_path, 'w', encoding='utf-8') as f:
+            with open(export_file_path, 'w', encoding=encode) as f:
                 f.write(content)
         elif format == 'bin':
             with open(export_file_path, 'wb') as f:
@@ -64,8 +66,8 @@ def save_file(content, export_name, export_dir='.', format=None, encode='utf-8')
         output = f'export_dir: {Path(export_dir).resolve()}'
     except Exception as e:
         code = 1
-        msg = f'[Error] file_save Error {e}'
-        output = e
+        msg = f'[Error] file_save Error {format_exc()}'
+        output = ''
 
     return {'code': code, 'msg': msg, 'output': output, 'trace': ''}
 

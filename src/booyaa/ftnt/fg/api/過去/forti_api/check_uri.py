@@ -1,4 +1,4 @@
-from booyaa.ftnt.fg.api import FortiApi
+from forti_api import FortiApi
 
 from rich.console import Console
 console = Console()
@@ -7,6 +7,7 @@ console = Console()
 class CheckApiResponse:
     def __init__(self):
         self.api = FortiApi()
+
 
 
 if __name__ == '__main__':
@@ -23,9 +24,7 @@ if __name__ == '__main__':
     )
     capi.login()
     # print(capi.cmdb.system_ha.get())
-    # capi.get_node_info(capi)
-    print(capi.monitor.switch_controller_managed_switch.get())
-
+    print(capi.ha_mgmt_status)
+    print(capi.ha_mgmt_interfaces)
     capi.logout()
-
 

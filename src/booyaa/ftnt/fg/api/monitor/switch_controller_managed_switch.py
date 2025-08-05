@@ -44,7 +44,7 @@ class SwitchControllerManagedSwitch:
                 model, version, build = '', '', ''
             self.msw_list.append(
                 {
-                    'name': sw['name'],
+                    'hostname': sw['name'],
                     'serial': sw['serial'],
                     'status': sw['status'],
                     'addr': sw['connecting_from'],
