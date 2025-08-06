@@ -40,18 +40,19 @@ class SwitchControllerManagedSwitchStatus:
         for sw in let['output']['results']:
             sw.setdefault('connecting_from', '0.0.0.0')
             sw.setdefault('os_version', '')
-            # if 'switch-id' in sw.keys() and 'name' not in sw.keys():
-            #     sw['name'] = sw['switch-id']
+
+            if '7.4.0' > self.api.version >= '7.2.0':
+                sw_hostname = sw['name']
+            else:
+                sw_hostname = sw['switch-id']
+
             match = re_versions.search(sw['os_version'])
             if match:
                 model, version, build = match.groups()
             else:
                 model, version, build = '', '', ''
             
-            if '7.4.0' > self.api.version >= '7.2.0':
-                sw_hostname = sw['name']
-            else:
-                sw_hostname = sw['switch-id']
+
             self.msw_list.append(
                 {
                     'hostname': sw_hostname,

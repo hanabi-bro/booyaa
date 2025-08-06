@@ -155,11 +155,11 @@ class MswBackup:
 
     def tui_run(self):
         self.backup_loop = True
-        with Live(self.update_table(), refresh_per_second=4) as live:
+        with Live(self.update_table(), refresh_per_second=1) as live:
             self.bulk_run()
             # SIGINT (Ctrl+C)をキャッチして停止
             def signal_handler(sig, frame):
-                self.backup_loop = False  # ping_loopはなぜかeventでは止まらない？？？
+                self.backup_loop = False
 
             signal(SIGINT, signal_handler)
 
