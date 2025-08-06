@@ -1,6 +1,8 @@
 from urllib.parse import urljoin
 from re import compile, IGNORECASE
 
+# version <= 7.0
+
 class SwitchControllerManagedSwitch:
     def __init__(self, api):
         self.api = api

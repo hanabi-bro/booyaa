@@ -188,4 +188,5 @@ if __name__ == '__main__':
         backup_dir='fg_config'
     )
     let = mswbak.gen_target_info_list()
+
     mswbak.tui_run()

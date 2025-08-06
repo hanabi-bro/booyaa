@@ -1,5 +1,5 @@
-from booyaa.ftnt.api import FortiApi
-from booyaa.ftnt.cli import FortiCli
+from booyaa.ftnt.fg.api import FortiApi
+from booyaa.ftnt.fg.cli import FortiCli
 from .get import Get
 from .show import Show
 

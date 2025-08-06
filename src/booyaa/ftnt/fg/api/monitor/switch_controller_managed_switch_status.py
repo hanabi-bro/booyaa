@@ -1,7 +1,9 @@
 from urllib.parse import urljoin
 from re import compile, IGNORECASE
 
-class SwitchControllerManagedSwitch:
+# version >= 7.2
+
+class SwitchControllerManagedSwitchStatus:
     def __init__(self, api):
         self.api = api
         self.msw_list = []
@@ -16,7 +18,7 @@ class SwitchControllerManagedSwitch:
         #]
 
     def get(self, scope='global'):
-        api_path =  'monitor/switch-controller/managed-switch'
+        api_path =  'monitor/switch-controller/managed-switch/status'
         url = urljoin(self.api.base_url, api_path)
 
         params = {
@@ -34,17 +36,25 @@ class SwitchControllerManagedSwitch:
 
         re_versions = compile(r'(\w+)-v([\d\.]+)-build(\d+),\d+\s*', IGNORECASE)
 
+        self.msw_list = []
         for sw in let['output']['results']:
             sw.setdefault('connecting_from', '0.0.0.0')
             sw.setdefault('os_version', '')
+            # if 'switch-id' in sw.keys() and 'name' not in sw.keys():
+            #     sw['name'] = sw['switch-id']
             match = re_versions.search(sw['os_version'])
             if match:
                 model, version, build = match.groups()
             else:
                 model, version, build = '', '', ''
+            
+            if '7.4.0' > self.api.version >= '7.2.0':
+                sw_hostname = sw['name']
+            else:
+                sw_hostname = sw['switch-id']
             self.msw_list.append(
                 {
-                    'name': sw['name'],
+                    'hostname': sw_hostname,
                     'serial': sw['serial'],
                     'status': sw['status'],
                     'addr': sw['connecting_from'],
