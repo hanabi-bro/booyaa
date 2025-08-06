@@ -16,7 +16,7 @@ class FgtMswCli(FortiCli):
 
         self.fgt_cli = FortiCli()
         self.fgt_api = FortiApi()
-
+        self.msw_list = []
 
     def set_target(self, target, user, password, alias=None, timeout=30, backup_dir=r'fg_config'):
         let = self.fgt_api.set_target(target=target, user=user, password=password, alias=alias, backup_dir=backup_dir)
@@ -26,20 +26,34 @@ class FgtMswCli(FortiCli):
         let = self.fgt_api.login()
         if let['code'] != 0:
             return let
-        let = self.fgt_api.login()
+
+        let = self.fgt_api.get_node_info(self.fgt_api)
         if let['code'] != 0:
             return let
-        # print(capi.cmdb.system_ha.get())
-        # capi.get_node_info(capi)
+        self.hostname = self.fgt_api.hostname
+
+        if self.alias:
+            """"""
+        elif not self.alias and self.fgt_api.fg_alias:
+            """"""
+            self.alias = self.fgt_api.fg_alias
+        else:
+            self.alias = self.hostname
+
+
+        if not self.alias and self.fgt_api.fg_alias:
+            self.alias = self.fgt_api.fg_alias
+
         let = self.fgt_api.monitor.switch_controller_managed_switch.get()
         if let['code'] != 0:
             return let
-
         _list = self.fgt_api.monitor.switch_controller_managed_switch.msw_list
         self.msw_list = []
 
         for msw_info in _list:
             msw = Msw()
+            if self.backup_dir:
+                msw.backup_dir = Path(self.backup_dir)
             msw.set_target(
                 fg_addr = self.addr,
                 fg_port = self.port or 22,
@@ -124,11 +138,12 @@ class Msw(FortiCli):
     def logout_msw(self):
         return self.logout()
 
-    def backup(self, full=False, cmd_strip=True, format='text', encode='utf-8', backup_dir='./fg_config'):
+    def backup(self, full=False, cmd_strip=True, format='text', encode='utf-8', backup_dir=None):
         let = {'code': 0, 'msg': '', 'output': ''}
         try:
             backup_dir = Path(backup_dir or self.backup_dir)
             backup_dir.mkdir(exist_ok=True)
+
             self.backup_dir = Path(backup_dir or self.backup_dir, self.fg_alias or self.fg_hostname)
             self.backup_dir.mkdir(exist_ok=True)
         except Exception as e:
@@ -158,11 +173,13 @@ if __name__ == '__main__':
         user='admin',
         password='P@ssw0rd',
         target='172.16.201.201',
-        alias='LABFG01',
+        alias=None,
     )
 
-    fgt_msw_cli.gen_msw_list()
+    let = fgt_msw_cli.gen_msw_list()
+    print(let)
     msw_list = fgt_msw_cli.msw_list
+
 
     for msw in msw_list:
         msw.display = True

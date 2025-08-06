@@ -34,6 +34,7 @@ class SwitchControllerManagedSwitch:
 
         re_versions = compile(r'(\w+)-v([\d\.]+)-build(\d+),\d+\s*', IGNORECASE)
 
+        self.msw_list = []
         for sw in let['output']['results']:
             sw.setdefault('connecting_from', '0.0.0.0')
             sw.setdefault('os_version', '')
