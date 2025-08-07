@@ -1,3 +1,44 @@
+# Forti Config Backup
+fortigateのバックアップを取得してファイルに保存する。
+保存ディレクトリは`fg_config`(実行ディレクトリ上)
+
+## Known Issue
+* ログイン失敗時のメッセージ処理はまだ整理中
+
+## CLI usage
+### Primary Only
+```
+fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd
+```
+
+### Primary and Secondary
+```
+fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd -s
+```
+
+### Add Logfile Prefix
+```
+fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd -n "LABFG01"
+```
+
+## CSV File usage
+```
+fgt_bak -f target.csv
+```
+
+### target csv format is below
+* [optional]header line
+    - fg_addr,user,password,alias,backup_secondary
+* Data Line
+    - <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>,[optional]<backup secondary node(via cli show)>
+e.g.)
+```csv
+fg_addr,user,password,alias,backup_secondary
+172.16.201.201,admin,P@ssw0rd,Lab-FG01,yes
+192.0.2.1,nw_admin,P@ssw0rd
+```
+
+
 ## Install
 ### windows
 `c:\opt\bin`にパスを通してsymlinkを張る場合のサンプル。

@@ -222,18 +222,13 @@ if __name__ == '__main__':
             exit()
 
     msg = dedent("""\
-    ~~~ FortiGate Config Backup ~~~
-    ## set target
-    forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd
+    ~~~ Forti MangedSwitch Config Backup ~~~
+    ## CLI usage
+    `msw_bak -t <fg_addr> -u <fg_user> -p <fg_password>`
 
-    ## target file csv
-    forti_config_backup -f target.csv
-    ### target csv format is below
-    <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>
-    e.g.)
+    e.g:
     ```
-    172.16.201.201,admin,P@ssword,
-    172.16.201.202,nwadmin,mypassword,LabFG01
+    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd
     ```
     """)
 

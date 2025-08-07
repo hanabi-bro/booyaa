@@ -243,8 +243,6 @@ class FortiCli():
     def close(self):
         self.interact.close()
         self.session.close()
-    
-
 
     def execute_command(self, cmd, prompt=None, timeout=None, cmd_strip=False):
         """コマンドを実行し、結果を返す"""
@@ -487,11 +485,16 @@ class FortiCli():
         return let
 
     def bastion_login_secondary(self, timeout=None):
-        # FGにSSHしていなかったらFGにログイン
-        if not self.session.get_transport().is_active():
-            let = self.login()
-            if let['code'] != 0:
-                return let
+        # セッションは一度クローズして、FGに再度ログイン
+        if self.interact:
+            self.interact.close()
+        if self.session:
+            self.session.close()
+
+        let = self.login()
+        if let['code'] != 0:
+            return let
+
         let = self.login_secondary()
         return let
 

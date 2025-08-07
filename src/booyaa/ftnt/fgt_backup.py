@@ -115,7 +115,7 @@ class FgtBackup:
         cli_ftb = FortiCli()
 
         # #========debug============
-        cli_ftb.display = True
+        cli_ftb.display = False
         # #========debug============
 
         let = cli_ftb.set_target(
@@ -248,17 +248,32 @@ if __name__ == '__main__':
 
     msg = dedent("""\
     ~~~ FortiGate Config Backup ~~~
-    ## set target
-    forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd
+    ## CLI usage
+    ### Primary Only
+    ```
+    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd
+    ```
 
-    ## target file csv
-    forti_config_backup -f target.csv
+    ### Primary and Secondary
+    ```
+    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd -s
+    ```
+
+    ## CSV File usage
+    ```
+    fgt_bak -f target.csv
+    ```
+
     ### target csv format is below
-    <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>
+    * [optional]header line
+        - fg_addr,user,password,alias,backup_secondary
+    * Data Line
+        - <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>,[optional]<backup secondary node(via cli show)>
     e.g.)
     ```
-    172.16.201.201,admin,P@ssword,
-    172.16.201.202,nwadmin,mypassword,LabFG01
+    fg_addr,user,password,alias,backup_secondary
+    172.16.201.201,admin,P@ssw0rd,Lab-FG01,yes
+    192.0.2.1,nw_admin,P@ssw0rd
     ```
     """)
 
@@ -268,7 +283,6 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-t', '--target', help='ipaddr or hostname\ne.g.) forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd')
     group.add_argument('-f', '--file', help='target csv file\ne.g.) forti_config_backup -f target.csv\ncsv fromat sample)\n172.16.201.201,admin.P@ssword\n172.16.201.202,nwadmin,MyP@ssW0rd')
-
 
     # 直接指定の場合、-t, -u, -pは必須
     target_group = parser.add_argument_group('Target Mode', '-t 指定時に必要な引数')
@@ -299,8 +313,8 @@ if __name__ == '__main__':
             'user': args.user,
             'password': args.password,
             'alias_name': args.name,
-            'message': '',
             'secondary': args.secondary,
+            'message': '',
         }]
 
     elif args.file:
@@ -311,14 +325,23 @@ if __name__ == '__main__':
         with open(args.file, 'r', encoding='utf-8_sig') as f:
             lines = f.read().splitlines()
 
-        for line in lines:
+        for i, line in enumerate(lines):
             target_info = line.split(',')
+            if i == 0 and target_info[0] == 'fg_addr':
+                continue
+
+            # Secandary Node BackupCheckk
+            secondary = False
+            if len(target_info) >= 5:
+                secondary = True if target_info[4] == 'yes' else False
+
             target_info_list.append({
                 'target': target_info[0],
                 'hostname': '',
                 'user': target_info[1],
                 'password': target_info[2],
                 'alias_name': target_info[3] if len(target_info) > 3 else '',
+                'secondary': secondary,
                 'message': '',
                 'config': b'',
             })
@@ -330,6 +353,3 @@ if __name__ == '__main__':
     sys.exit()
 
 
-'''
-* 7.0には/system/cfsはまだない？7.0でGUI時のデバッグする。
-'''
