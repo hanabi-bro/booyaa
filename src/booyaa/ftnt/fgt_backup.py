@@ -3,8 +3,8 @@ from rich.table import Table
 from pathlib import Path
 import sys
 
-from booyaa.ftnt.api import FortiApi
-from booyaa.ftnt.cli import FortiCli
+from booyaa.ftnt.fg.api import FortiApi
+from booyaa.ftnt.fg.cli import FortiCli
 from booyaa.common.export.save_file import save_config
 
 from concurrent.futures import ThreadPoolExecutor

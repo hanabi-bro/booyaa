@@ -2,6 +2,8 @@ from rich.live import Live
 from rich.table import Table
 
 from booyaa.ftnt.msw import FgtMswCli
+
+from concurrent.futures import ThreadPoolExecutor
 from booyaa.common.fire_and_forget import fire_and_forget
 
 
@@ -36,6 +38,7 @@ class MswBackup:
 
     @fire_and_forget
     def bulk_run(self):
+        self.backup_loop = True
         try:
             for target in self.target_info_list:
                 let = self.run(target)
@@ -43,6 +46,22 @@ class MswBackup:
             print(format_exc)
         finally:
             self.backup_loop = False
+
+    @fire_and_forget
+    def multi_bulk_run(self):
+        self.backup_loop = True
+        results = []
+        try:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                for target_info in self.target_info_list:
+                    results.append(executor.submit(self.run, target_info))
+                    sleep(0.5)
+        except Exception as e:
+            print(format_exc)
+        finally:
+            [r.result() for r in results]
+            self.backup_loop = False
+
 
     def run(self, target):
         let = {'code': 0, 'msg': '', 'output': '', 'result': ''}
@@ -156,7 +175,8 @@ class MswBackup:
     def tui_run(self):
         self.backup_loop = True
         with Live(self.update_table(), refresh_per_second=1) as live:
-            self.bulk_run()
+            # self.bulk_run()
+            self.multi_bulk_run()
             # SIGINT (Ctrl+C)をキャッチして停止
             def signal_handler(sig, frame):
                 self.backup_loop = False
@@ -172,21 +192,89 @@ class MswBackup:
             live.update(self.update_table())
 
 
-
 if __name__ == '__main__':
-    fg_addr = '172.16.201.201'
-    fg_user = 'admin'
-    fg_password = 'P@ssw0rd'
-    fg_alias = None
+    # fg_addr = '172.16.201.201'
+    # fg_user = 'admin'
+    # fg_password = 'P@ssw0rd'
+    # fg_alias = None
+
+    # mswbak = MswBackup()
+    # let = mswbak.setup(
+    #     fg_addr=fg_addr,
+    #     fg_user=fg_user,
+    #     fg_password=fg_password,
+    #     fg_alias=fg_alias,
+    #     backup_dir='fg_config'
+    # )
+    # let = mswbak.gen_target_info_list()
+
+    # mswbak.tui_run()
+
+    #==========================
+
+    from argparse import ArgumentParser, RawTextHelpFormatter
+    from textwrap import dedent
+
+    class MyArgumentParser(ArgumentParser):
+        def error(self, message):
+            print('error occured while parsing args : '+ str(message))
+            self.print_help() 
+            exit()
+
+    msg = dedent("""\
+    ~~~ FortiGate Config Backup ~~~
+    ## set target
+    forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd
+
+    ## target file csv
+    forti_config_backup -f target.csv
+    ### target csv format is below
+    <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>
+    e.g.)
+    ```
+    172.16.201.201,admin,P@ssword,
+    172.16.201.202,nwadmin,mypassword,LabFG01
+    ```
+    """)
+
+    parser = MyArgumentParser(description=msg, formatter_class=RawTextHelpFormatter)
+
+    # 直接指定とファイル指定は同時に使えない
+    # 現時点では直接指定のみ
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-t', '--target', help='ipaddr or hostname\ne.g.) forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd')
+    # group.add_argument('-f', '--file', help='target csv file\ne.g.) forti_config_backup -f target.csv\ncsv fromat sample)\n172.16.201.201,admin.P@ssword\n172.16.201.202,nwadmin,MyP@ssW0rd')
+
+    # 直接指定の場合、-t, -u, -pは必須
+    target_group = parser.add_argument_group('Target Mode', '-t 指定時に必要な引数')
+    target_group.add_argument('-u', '--user', help='login user name')
+    target_group.add_argument('-p', '--password', help='login password')
+    target_group.add_argument('-n', '--name', help='[optional]logfile name, e.g.) log file prefix instead of hostname')
+
+    # ログ出力ディレクトリ指定
+    parser.add_argument('-d', '--directory', default='./fg_config', help='backup directory path default is ./fg_config')
+
+    # パスワードマスク
+    parser.add_argument('--nomask', help='[optional]No Password Mask, default is True', action='store_true')
+
+    args = parser.parse_args()
+
+    # 引数チェック
+    if args.target and (not args.user or not args.password):
+        parser.error("--u and -p are required when -t is specified.")
+
+    if args.target:
+        parent_fg = {
+            'fg_addr': args.target,
+            'fg_user': args.user,
+            'fg_password': args.password,
+            'fg_alias': args.name,
+            'backup_dir': args.directory,
+        }
 
     mswbak = MswBackup()
     let = mswbak.setup(
-        fg_addr=fg_addr,
-        fg_user=fg_user,
-        fg_password=fg_password,
-        fg_alias=fg_alias,
-        backup_dir='fg_config'
+        **parent_fg
     )
     let = mswbak.gen_target_info_list()
-
     mswbak.tui_run()

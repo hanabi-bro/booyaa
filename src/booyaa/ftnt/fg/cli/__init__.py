@@ -4,9 +4,9 @@ from paramiko import SSHClient, MissingHostKeyPolicy
 from paramiko_expect import SSHClientInteraction
 from re import search, findall
 
-from booyaa.ftnt.cli.get import Get
-from booyaa.ftnt.cli.show import Show
-from booyaa.ftnt.cli.execute import Execute
+from booyaa.ftnt.fg.cli.get import Get
+from booyaa.ftnt.fg.cli.show import Show
+from booyaa.ftnt.fg.cli.execute import Execute
 
 from booyaa.common.export.save_file import save_config
 
