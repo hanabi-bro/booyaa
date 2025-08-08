@@ -119,7 +119,6 @@ class MswBackup:
         if let['code'] > 0:
             return let
 
-
         return let
 
     def gen_target_info_list(self):

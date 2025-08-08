@@ -81,13 +81,23 @@ class FortiCli():
         self.SSH_PROMPT = [
             r'.*(?i:password):\s*',
             r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
-            r'(?i:.*Could not manage member.*)',
-            r'(?i:.*please try again.*)',
-            r'(?i:.*Connection closed.*)',
-            r'(?i:.*No route to host.*)',
-            r'(?i:.*ssh_exchange_identification: read: Connection reset by peer.*)'
-            r'(?i:.*reset by peer.*)'
+            r'([\r\n]+)?.*(?i:Could not manage member).*',
+            r'([\r\n]+)?.*(?i:please try again).*',
+            r'([\r\n]+)?.*(?i:Connection closed).*',
+            r'([\r\n]+)?.*(?i:No route to host).*',
+            r'([\r\n]+)?.*(?i:reset by peer).*'
         ]
+
+        # self.SSH_PROMPT = [
+        #     r'.*(?i:password):\s*',
+        #     r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
+        #     r'(?i:.*Could not manage member.*)',
+        #     r'(?i:.*please try again.*)',
+        #     r'(?i:.*Connection closed.*)',
+        #     r'(?i:.*No route to host.*)',
+        #     r'(?i:.*ssh_exchange_identification: read: Connection reset by peer.*)'
+        #     r'(?i:.*reset by peer.*)'
+        # ]
 
         self.node_info_flg = False
         self.secondary_info_flg = False
@@ -184,13 +194,13 @@ class FortiCli():
             # SSHのセッションをparamiko_expectに渡す
             self.interact = SSHClientInteraction(self.session, timeout=self.timeout, display=self.display)
 
-            let['msg'] = f'Login successful to {self.addr} as {self.user}'
             let['output'] = self.interact.current_output_clean
+            _output = self.interact.current_output
 
         except Exception as e:
             let['code'] = 1
             let['msg'] = f'[Error] Session Timeout to login {self.addr} {format_exc()}'
-
+            return let
 
         # ログイン成功後、output standard設定変更
         if self.output_standard_flg is False:
@@ -415,20 +425,33 @@ class FortiCli():
         index = self.interact.expect(self.SSH_PROMPT, timeout=timeout)
         let['output'] = self.interact.current_output_clean
 
-        if index == 0:
-            # パスワード入力
-            self.interact.send(password)
-            index = self.interact.expect(self.FG_PROMPT, timeout=timeout)
-            #
-            # @todo ログインチェック
-            #
-            if index == 0:
-                let['code'] = 0
-                let['msg'] = f'ssh login to {addr}'
-
         if index != 0:
             let['code'] = index
-            let['msg'] = f'[Error]Falied {cmd} {let['output']}\nmatch{self.SSH_PROMPT[index]}'
+            let['msg'] = f'[Error]Falied {cmd} {let['output']}'
+            return let
+
+        # パスワード入力
+        self.interact.send(password)
+        index = self.interact.expect(self.FG_PROMPT, timeout=timeout)
+        _output = self.interact.current_output
+        let['output'] = self.interact.current_output_clean
+
+        # ログインチェック
+        let['msg'] = f'ssh login to {addr}'
+
+        # なぜか、sshエラー拾えないので、再度チェック
+        for check_word in self.SSH_PROMPT[2:]:
+            match = search(check_word, _output)
+            if match:
+                let['code'] = 1
+                let['msg'] = f'[Error] Login failed {_output}'
+
+        # 念のためプロンプトが自身（FG）のホスト名じゃない事も確認しておく
+        my_prompt = rf'([\r\n]+)?({self.hostname})(\([\w_\-\.]+\))?\s*#\s*'
+        match = search(my_prompt, _output)
+        if match:
+                let['code'] = 1
+                let['msg'] = f'[Error] Login failed. Prompt is {self.hostname}: {_output}'
 
         return let
 
@@ -594,7 +617,7 @@ if __name__ == '__main__':
     )
     let = cli.login()  # ログイン
 
-    let = cli.execute_ssh(addr='10.255.1.1', user='admin', password='P@ssw0rd')
+    let = cli.execute_ssh(addr='169.254.1.1', user='admin', password='P@ssw0rd')
     print(let)
     let = cli.execute_command('get system status')
     let = cli.exit()
