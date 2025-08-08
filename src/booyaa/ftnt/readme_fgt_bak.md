@@ -2,9 +2,6 @@
 fortigateのバックアップを取得してファイルに保存する。
 保存ディレクトリは`fg_config`(実行ディレクトリ上)
 
-## Known Issue
-* ログイン失敗時のメッセージ処理はまだ整理中
-
 ## CLI usage
 ### Primary Only
 ```

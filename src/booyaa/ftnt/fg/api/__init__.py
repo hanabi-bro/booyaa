@@ -156,6 +156,7 @@ class FortiApi():
         else:
             let['code'] = 1
             let['msg'] = f'[Error] Login Faile {self.fg_addr}'
+            return let
 
         # ログイン成功ならホスト名などnode infoを取得
         if node_info:

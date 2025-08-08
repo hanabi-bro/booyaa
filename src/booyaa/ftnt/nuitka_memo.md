@@ -13,6 +13,7 @@ python -m nuitka `
 ```
 
 ## ManagedSwitch Backup
+```poewrshell
 python -m nuitka `
   --msvc=latest `
   --standalone `
@@ -21,6 +22,6 @@ python -m nuitka `
   --output-filename=msw_bak `
   --windows-icon-from-ico=./icon/forti_backup/MSW_BAK.ico `
   ./src/booyaa/ftnt/msw_backup.py
-
+```
 
 ## FortiAnalyzer Backup

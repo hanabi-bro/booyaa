@@ -76,38 +76,49 @@ class MswBackup:
 
         # FG→MSWへログイン
         let = target['msw_obj'].login_msw()
+
         # TUI用
         if let['code'] == 0:
             let['result'] = 'OK'
         elif let['code'] > 0:
             let['result'] = '[red]NG[/]'
-            return let
 
         target['progress']['login'] = let
         target['message'] = let['msg']
 
+        if let['code'] > 0:
+            return let
+
         # MSWバックアップ
         let = target['msw_obj'].backup()
-        target['progress']['backup'] = let
-        target['message'] = let['msg']
+
         # TUI用
         if let['code'] == 0:
             let['result'] = 'OK'
         elif let['code'] > 0:
             let['result'] = '[red]NG[/]'
+
+        target['progress']['backup'] = let
+        target['message'] = let['msg']
+
+        if let['code'] > 0:
             return let
 
 
         # MSW→FGからログアウト
         let = target['msw_obj'].logout_msw()
-        target['progress']['logout'] = let
+
         # TUI用
         if let['code'] == 0:
             let['result'] = 'OK'
         elif let['code'] > 0:
             let['result'] = '[red]NG[/]'
-            target['message'] = let['msg']
+
+        target['progress']['logout'] = let
+
+        if let['code'] > 0:
             return let
+
 
         return let
 

@@ -44,10 +44,13 @@ class FgtMswCli(FortiCli):
         if not self.alias and self.fgt_api.fg_alias:
             self.alias = self.fgt_api.fg_alias
 
-        if self.version <= '7.0.0':
+        if self.version < '7.0.0':
+            let = self.fgt_api.monitor.switch_controller_managed_switch.get()
+            _list = self.fgt_api.monitor.switch_controller_managed_switch.msw_list
+        if '7.0.0' <= self.version < '7.2.0':
             let = self.fgt_api.monitor.switch_controller_managed_switch_status.get()
             _list = self.fgt_api.monitor.switch_controller_managed_switch_status.msw_list
-        elif self.version  >= '7.2.0':
+        elif '7.2.0' <= self.version:
             let = self.fgt_api.monitor.switch_controller_managed_switch.get()
             _list = self.fgt_api.monitor.switch_controller_managed_switch.msw_list
         if let['code'] != 0:
@@ -138,7 +141,8 @@ class Msw(FortiCli):
 
     def login_msw(self):
         let = self.login_fgt()
-        return self.execute_ssh(self.addr, self.user, self.password)
+        let = self.execute_ssh(self.addr, self.user, self.password)
+        return let
 
     def logout_msw(self):
         return self.logout()
@@ -183,8 +187,6 @@ if __name__ == '__main__':
 
     let = fgt_msw_cli.gen_msw_list()
     msw_list = fgt_msw_cli.msw_list
-
-    print(msw_list)
 
     for msw in msw_list:
         msw.display = True

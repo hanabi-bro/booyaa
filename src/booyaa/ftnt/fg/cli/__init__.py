@@ -82,7 +82,8 @@ class FortiCli():
             r'.*(?i:password):\s*',
             r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
             r'(?i:.*Could not manage member.*)',
-            r'(?i: .*please try again.*)'
+            r'(?i:.*please try again.*)',
+            r'(?i:.*Connection closed.*)',
             r'(?i:.*No route to host.*)',
             r'(?i:.*ssh_exchange_identification: read: Connection reset by peer.*)'
             r'(?i:.*reset by peer.*)'
@@ -427,7 +428,7 @@ class FortiCli():
 
         if index != 0:
             let['code'] = index
-            let['msg'] = f'[Error]Falied {cmd} {self.SSH_PROMPT[index]}'
+            let['msg'] = f'[Error]Falied {cmd} {let['output']}\nmatch{self.SSH_PROMPT[index]}'
 
         return let
 
