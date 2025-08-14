@@ -73,14 +73,14 @@ class FortiCli():
         self.interact = ''
 
         self.FG_PROMPT = [
-            r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
+            r'([\r\n]+)?([\w_\-\.]+)\s*(\([\w_\-\.]+\))?\s*#\s*',
             r'\-\-(?i:More)\-\-',
             r'(?i:Command fail\. Return code .*)',
             r'(?i:Unknown action .*)',
         ]
         self.SSH_PROMPT = [
             r'.*(?i:password):\s*',
-            r'([\r\n]+)?([\w_\-\.]+)(\([\w_\-\.]+\))?\s*#\s*',
+            r'([\r\n]+)?([\w_\-\.]+)\s*(\([\w_\-\.]+\))?\s*#\s*',
             r'([\r\n]+)?.*(?i:Could not manage member).*',
             r'([\r\n]+)?.*(?i:please try again).*',
             r'([\r\n]+)?.*(?i:Connection closed).*',
@@ -324,6 +324,7 @@ class FortiCli():
 
         # ホスト名の抽出
         self.hostname = self.get.system_status.hostname
+        self.fg_hostname = self.hostname
 
         # シリアル番号の抽出
         self.serial = self.get.system_status.serial
@@ -447,11 +448,12 @@ class FortiCli():
                 let['msg'] = f'[Error] Login failed {_output}'
 
         # 念のためプロンプトが自身（FG）のホスト名じゃない事も確認しておく
-        my_prompt = rf'([\r\n]+)?({self.hostname})(\([\w_\-\.]+\))?\s*#\s*'
+        my_prompt = rf'([\r\n]+)?({self.fg_hostname})(\([\w_\-\.]+\))?\s*#\s*'
         match = search(my_prompt, _output)
+
         if match:
                 let['code'] = 1
-                let['msg'] = f'[Error] Login failed. Prompt is {self.hostname}: {_output}'
+                let['msg'] = f'[Error] Login failed. Prompt is {self.fg_hostname}: {_output}'
 
         return let
 
@@ -617,7 +619,7 @@ if __name__ == '__main__':
     )
     let = cli.login()  # ログイン
 
-    let = cli.execute_ssh(addr='169.254.1.1', user='admin', password='P@ssw0rd')
+    let = cli.execute_ssh(addr='169.254.1.3', user='admin', password='P@ssw0rd')
     print(let)
     let = cli.execute_command('get system status')
     let = cli.exit()

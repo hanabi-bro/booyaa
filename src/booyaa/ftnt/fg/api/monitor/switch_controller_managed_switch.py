@@ -33,6 +33,7 @@ class SwitchControllerManagedSwitch:
         }
 
         let = self.api.req(url, **kwargs)
+        print(let)
 
         re_versions = compile(r'(\w+)-v([\d\.]+)-build(\d+),\d+\s*', IGNORECASE)
 

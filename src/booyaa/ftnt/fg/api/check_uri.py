@@ -79,7 +79,7 @@ if __name__ == '__main__':
         'admin',
         'P@ssw0rd'
     )
-    api_path = 'monitor/system/csf'
+    api_path = 'monitor/switch-controller/managed-switch/status'
     let = ca.check(
         api_path=api_path,
         method='get,'

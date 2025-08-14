@@ -18,7 +18,7 @@ if __name__ == '__main__':
         'P@ssw0rd'
     )
     api.login()
-    let = api.monitor.switch_controller_managed_switch.get()
+    let = api.monitor.switch_controller_managed_switch_status.get()
 
     with open('tmp/check_module_output.txt', 'w', encoding='utf-8') as f:
         from pprint import pprint
