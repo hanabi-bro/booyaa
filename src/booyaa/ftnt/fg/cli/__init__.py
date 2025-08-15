@@ -74,18 +74,22 @@ class FortiCli():
 
         self.FG_PROMPT = [
             r'([\r\n]+)?([\w_\-\.]+)\s*(\([\w_\-\.]+\))?\s*#\s*',
-            r'\-\-(?i:More)\-\-',
-            r'(?i:Command fail\. Return code .*)',
-            r'(?i:Unknown action .*)',
         ]
-        self.SSH_PROMPT = [
-            r'.*(?i:password):\s*',
-            r'([\r\n]+)?([\w_\-\.]+)\s*(\([\w_\-\.]+\))?\s*#\s*',
+
+        self.ERROR_PROMPT = [
+            r'([\r\n]+)?.*(?i:Command fail)\s*',
+            r'([\r\n]+)?.*(?i:Return code)\s*',
+            r'([\r\n]+)?.*(?i:Unknown action)\s*',
             r'([\r\n]+)?.*(?i:Could not manage member).*',
             r'([\r\n]+)?.*(?i:please try again).*',
             r'([\r\n]+)?.*(?i:Connection closed).*',
             r'([\r\n]+)?.*(?i:No route to host).*',
-            r'([\r\n]+)?.*(?i:reset by peer).*'
+            r'([\r\n]+)?.*(?i:reset by peer).*',
+        ]
+
+        self.SSH_PROMPT = [
+            r'.*(?i:password):\s*',
+            r'([\r\n]+)?([\w_\-\.]+)\s*(\([\w_\-\.]+\))?\s*#\s*',
         ]
 
         # self.SSH_PROMPT = [
@@ -203,8 +207,9 @@ class FortiCli():
             return let
 
         # ログイン成功後、output standard設定変更
-        if self.output_standard_flg is False:
-            self.output_standard()
+        # '| grep .*'で回避可能そうなので一旦無効化しておいて様子見
+        # if self.output_standard_flg is False:
+        #     self.output_standard()
 
         # ログイン成功後にPrimaryとSecondaryの情報を取得
         # 毎回実施しないよう取得済みフラグたてておく
@@ -255,42 +260,37 @@ class FortiCli():
         self.interact.close()
         self.session.close()
 
-    def execute_command(self, cmd, prompt=None, timeout=None, cmd_strip=False):
+    def execute_command(self, cmd, prompt=None, error_words=None, timeout=None, cmd_strip=False):
         """コマンドを実行し、結果を返す"""
         let = {'code': 0, 'msg': '', 'output': ''}
 
         timeout = timeout or self.timeout
         prompt = prompt or self.FG_PROMPT
+        error_words = error_words or self.ERROR_PROMPT
 
         try:
             self.interact.send(cmd)
-            # index = self.interact.expect(prompt, timeout=timeout)
-            output = ""
-            while True:
-                index = self.interact.expect(prompt, timeout=timeout)
-                output += self.interact.current_output_clean
-
-                if index == 0:
-                    break
-                elif index == 1:
-                    self.interact.send(' ')
+            index = self.interact.expect(prompt, timeout=timeout)
+            output = self.interact.current_output_clean
 
             let['output'] = output
 
-            if index <= 1:
-                let['code'] = 0
-                if cmd_strip:
-                    # 入力コマンドを削除
-                    if let['output'].startswith(cmd):
-                        let['output'] = let['output'][len(cmd):].lstrip()
+            # エラーワードが含まれていないかチェック
+            for err_word in error_words:
+                match = search(err_word, output)
+                if match:
+                    let['code'] = 1
+                    let['msg'] = f'[Error] {cmd} is {err_word} in output'
+                    break
 
-            else:
-                let['code'] = 1
-                let['msg'] =  f'Error: Net Expect Return: [{cmd}]\n'
+            if let['code'] == 0 and cmd_strip:
+                # 入力コマンドを削除
+                if let['output'].startswith(cmd):
+                    let['output'] = let['output'][len(cmd):].lstrip()
 
         except Exception as e:
             let['code'] = 1
-            let['msg'] = f'Error: execute comand [{cmd}], Exception: {e}'
+            let['msg'] = f'[Error] execute comand [{cmd}], Exception: {e}'
 
         return let
 

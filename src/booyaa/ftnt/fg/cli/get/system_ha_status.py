@@ -15,7 +15,7 @@ class SystemHaStatus:
 
 
     def get(self):
-        cmd = 'get system ha status'
+        cmd = 'get system ha status | grep .*'
         # VDOMモードの場合はglobaに移動
         if self.api.vdom_mode == 'multi-vdom':
             let = self.api.config_global()

@@ -140,8 +140,8 @@ class Msw(FortiCli):
     def login_msw(self):
         let = self.login_fgt()
         let = self.execute_ssh(self.addr, self.user, self.password)
-        if self.output_standard_flg is False:
-            self.output_standard()
+        # if self.output_standard_flg is False:
+        #     self.output_standard()
         
         return let
 
@@ -192,8 +192,8 @@ if __name__ == '__main__':
     for msw in msw_list:
         msw.display = True
         if msw.status == 'Connected':
-            msw.login_msw()
-            let = msw.backup()
+            let = msw.login_msw()
+            # let = msw.backup()
             print(let)
             # print(msw.fg_addr)
             # print(msw.fg_port)

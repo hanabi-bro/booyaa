@@ -115,7 +115,7 @@ class FgtBackup:
         cli_ftb = FortiCli()
 
         # #========debug============
-        cli_ftb.display = False
+        cli_ftb.display = True
         # #========debug============
 
         let = cli_ftb.set_target(

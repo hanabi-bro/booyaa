@@ -14,12 +14,12 @@ class SystemStatus:
     ha_mode: str                    # HAモード 'standalone', 'active-passive', 'active-active'
     ha_role: str
 
-    def __init__(self, api):
-        self.api = api
+    def __init__(self, cli):
+        self.cli = cli
 
     def get(self):
-        cmd = 'get system status'
-        res = self.api.execute_command(cmd)
+        cmd = 'get system status | grep .*'
+        res = self.cli.execute_command(cmd)
 
         if res['code'] != 0:
             return res

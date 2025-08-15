@@ -10,7 +10,7 @@ class Get:
     def get(self, sentence='', timeout=60.0, cmd_strip=True):
         """get
         """
-        cmd = f'get {sentence}'
+        cmd = f'get {sentence} | grep .*'
 
         return self.cli.execute_command(cmd, cmd_strip=cmd_strip)
 
