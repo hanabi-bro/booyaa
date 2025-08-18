@@ -27,7 +27,6 @@ class SystemStatus:
         for k, v in pattern_dict.items():
             matchs = v.search(res['output'])
             if matchs:
-                print(matchs)
                 if k == 'versions':
                     setattr(self, 'model', f'FS{matchs.group(1)}')
                     setattr(self, 'version', matchs.group(2))

@@ -115,7 +115,7 @@ class FgtBackup:
         cli_ftb = FortiCli()
 
         # #========debug============
-        cli_ftb.display = True
+        cli_ftb.display = False
         # #========debug============
 
         let = cli_ftb.set_target(
@@ -132,7 +132,7 @@ class FgtBackup:
             'logout': cli_ftb.bastion_logout_secondary,
         }
 
-        target_info['target'] += '\nStandby Node'
+        target_info['target'] += '\n ┗━ Standby Node'
         # Secondary node
         for func_name, func in cli_func_dict.items():
             if func_name == 'save':

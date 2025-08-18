@@ -41,9 +41,9 @@ class SwitchControllerManagedSwitchStatus:
             sw.setdefault('connecting_from', '0.0.0.0')
             sw.setdefault('os_version', '')
 
-            if '7.4.0' > self.api.version >= '7.2.0':
+            if '7.0.0' <= self.api.version < '7.2.0':
                 sw_hostname = sw['name']
-            else:
+            elif '7.2.0' <= self.api.version:
                 sw_hostname = sw['switch-id']
 
             match = re_versions.search(sw['os_version'])

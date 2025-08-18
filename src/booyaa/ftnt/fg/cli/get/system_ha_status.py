@@ -28,7 +28,7 @@ class SystemHaStatus:
         if res['code'] != 0:
             return let
 
-        _ha_cluster_match = findall(r'(\S+) *, *(\w+), *HA cluster index *= *(\d+)', res['output'])
+        _ha_cluster_match = findall(r'(\S+) *, *(\w+), *(HA)? cluster index *= *(\d+)', res['output'])
         self.exsist_secondary = len(_ha_cluster_match) == 2 or False
         if _ha_cluster_match[0][0] == self.api.hostname:
             _primary_cluster_info = _ha_cluster_match[0]

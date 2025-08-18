@@ -55,7 +55,7 @@ class MswBackup:
             with ThreadPoolExecutor(max_workers=5) as executor:
                 for target_info in self.target_info_list:
                     results.append(executor.submit(self.run, target_info))
-                    sleep(0.5)
+                    sleep(1.5)
         except Exception as e:
             print(format_exc)
         finally:

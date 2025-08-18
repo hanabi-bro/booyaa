@@ -620,7 +620,6 @@ if __name__ == '__main__':
     let = cli.login()  # ログイン
 
     let = cli.execute_ssh(addr='169.254.1.3', user='admin', password='P@ssw0rd')
-    print(let)
     let = cli.execute_command('get system status')
     let = cli.exit()
 
