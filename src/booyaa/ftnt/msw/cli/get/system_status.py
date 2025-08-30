@@ -11,7 +11,7 @@ class SystemStatus:
         self.cli = cli
 
     def get(self):
-        cmd = 'get system status'
+        cmd = 'get system status | grep .*'
         res = self.cli.execute_command(cmd)
 
         if res['code'] != 0:

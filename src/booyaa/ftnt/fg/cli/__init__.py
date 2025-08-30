@@ -1,4 +1,5 @@
 from pathlib import Path
+from copy import copy
 from configparser import ConfigParser
 from paramiko import SSHClient, MissingHostKeyPolicy
 from paramiko_expect import SSHClientInteraction
@@ -47,8 +48,9 @@ class FortiCli():
         self.patch = ''
         self.build = ''
 
-        self.model = ''
+        self.fg_hostname = ''
 
+        self.model = ''
         self.config = ''
 
         self.manage_vdom = 'root'
@@ -295,7 +297,7 @@ class FortiCli():
         return let
 
     def output_standard(self):
-        cmd = 'show system console'
+        cmd = 'show system console | grep .*'
         let = self.execute_command(cmd)
         _standard = search(r'set output standard', let['output'])
         if not _standard:
@@ -324,7 +326,7 @@ class FortiCli():
 
         # ホスト名の抽出
         self.hostname = self.get.system_status.hostname
-        self.fg_hostname = self.hostname
+        self.fg_hostname = copy(self.hostname)
 
         # シリアル番号の抽出
         self.serial = self.get.system_status.serial

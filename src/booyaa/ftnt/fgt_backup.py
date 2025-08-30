@@ -16,6 +16,7 @@ from time import sleep
 class FgtBackup:
     def __init__(self, config_ini=Path(Path(__file__).parent.resolve(), 'forti_backup.ini')):
         self.config_ini = config_ini
+        self.backup_dir = Path()
 
     def setup(self, target_info_list, nomask=False, backup_dir='fg_config'):
         self.target_info_list = target_info_list

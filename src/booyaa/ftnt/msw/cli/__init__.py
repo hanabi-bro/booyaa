@@ -1,12 +1,11 @@
-from booyaa.ftnt.fg.api import FortiApi
 from booyaa.ftnt.fg.cli import FortiCli
-from .get import Get
-from .show import Show
+from booyaa.ftnt.fg.api import FortiApi
+from booyaa.ftnt.msw.cli.get import Get
+from booyaa.ftnt.msw.cli.show import Show
 
 class MswCli(FortiCli):
     def __init__(self):
         super().__init__()
-        self.fgtapi = FortiApi()
         self.fgtcli = FortiCli()
         self.get = Get(self)
         self.show = Show(self)
@@ -18,29 +17,36 @@ class MswCli(FortiCli):
         self.msw_status = ''
         self.msw_state = ''
         self.msw_user = ''
-        self.msw_pass = ''
+        self.msw_password = ''
 
-    def set_target(self,
-            fg_addr, fg_user, fg_pass, fg_alias=None,
-            msw_uesr=None, msw_pass=None,
+        self.fgt_api = FortiApi()
+
+    def setup(self,
+            fg_addr, fg_user, fg_password, fg_alias=None,
+            msw_addr=None, msw_user='admin', msw_password=None,
             timeout=30, backup_dir=r'fg_config'
         ):
 
-        # FG API
-        let = self.fgtapi.set_target(fg_addr, fg_user, fg_pass, fg_alias, timeout, backup_dir)
-        if let['code'] != 0:
-            return let
-
-        # FG CLI
-        let = self.fgtcli.set_target(fg_addr, fg_user, fg_pass, fg_alias, timeout, backup_dir)
-        if let['code'] != 0:
-            return let
-
         # MSWのユーザ、パスワードは指定が無ければFGと同一にする
-        self.msw_uesr = msw_uesr if msw_uesr else fg_user
-        self.msw_pass = msw_pass if msw_pass else fg_pass
+        if msw_addr is None:
+            return {
+                'code': 1,
+                'msg': '[Error]msw_addr is need',
+            }
 
-        return super().set_target(fg_addr, fg_user, fg_pass, fg_alias, timeout, backup_dir)
+        self.msw_addr = msw_addr
+        self.msw_user = msw_user
+        self.msw_password = msw_password or self.password
+
+        let = self.fgt_api.set_target(
+            target = fg_addr,
+            user = fg_user,
+            password = fg_password,
+            alias = fg_alias,
+            timeout = timeout,
+            backup_dir = backup_dir)
+
+        return self.set_target(fg_addr, fg_user, fg_password, fg_alias, timeout, backup_dir)
 
     def login_fgt(self):
         self.login()
@@ -48,14 +54,42 @@ class MswCli(FortiCli):
     def logout_fgt(self):
         self.logout()
 
-    def get_fsw_list(self):
-        self.fgtapi.login()
-        let = self.fgtapi.monitor.switch_controller_managed_switch.get()
-        self.fsw_list = self.fgtapi.monitor.switch_controller_managed_switch.fsw_list
-        # [
-        #   {'name': 'FSW01', 'serial': 'S224ENTF18000490', 'status': 'Connected', 'addr': '10.255.1.1', 'state': 'Authorized'},
-        #   {'name': 'S224EPTF20005577', 'serial': 'S224EPTF20005577', 'status': 'Idle', 'addr': '-', 'state': 'DeAuthorized'}
-        # ]
+    def msw_login(self):
+        let = super().login()
+        let = self.execute_ssh(
+            addr = self.msw_addr,
+            user = self.msw_user,
+            password = self.msw_password
+        )
+
+    # def msw_logout(self):
+    #     self.exit()
+    #     self.logout_fgt()
+
+
+if __name__ == '__main__':
+    target_info = {
+        'fg_addr': '172.16.201.201',
+        'fg_user': 'admin',
+        'fg_password': 'P@ssw0rd',
+        'fg_alias': 'ラボFG',
+        'msw_addr': '192.0.2.1',
+        'msw_user': 'admin',
+        'msw_password': 'P@ssw0rd',
+        'timeout': 30,
+    }
+    
+    mswcli = MswCli()
+    mswcli.setup(**target_info)
+    mswcli.display = True
+
+    let = mswcli.fgt_api.login()
+    let = mswcli.fgt_api.get_node_info(mswcli.fgt_api)
+    let = mswcli.fgt_api.logout()
+
+    print(mswcli.fgt_api.__dict__)
+
+
 
 
 

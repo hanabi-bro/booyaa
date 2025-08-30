@@ -22,7 +22,13 @@ class FgtMswCli(FortiCli):
         let = self.fgt_api.set_target(target=target, user=user, password=password, alias=alias, backup_dir=backup_dir)
         return super().set_target(target=target, user=user, password=password, alias=alias, backup_dir=backup_dir)
 
-    def gen_msw_list(self, msw_port=None, msw_user=None, msw_password=None):
+    def gen_msw_list(self, msw_user='admin', msw_password=None, msw_port=22):
+        """
+        Args:
+            msw_user(str): デフォルト'admin'
+            msw_password(str): デフォルト、FGと同じ
+            msw_port(int): デフォルト'22'
+        """
         let = self.fgt_api.login()
         if let['code'] != 0:
             return let
@@ -30,7 +36,7 @@ class FgtMswCli(FortiCli):
         let = self.fgt_api.get_node_info(self.fgt_api)
         if let['code'] != 0:
             return let
-        self.hostname = self.fg_hostname = self.fgt_api.hostname
+        self.hostname = self.fgt_api.hostname
 
         if self.alias:
             """"""
@@ -70,7 +76,7 @@ class FgtMswCli(FortiCli):
                 fg_alias = self.alias,
                 msw_addr = msw_info['addr'],
                 msw_port = msw_port or 22,
-                msw_user = msw_user or self.user,
+                msw_user = msw_user,
                 msw_password = msw_password or self.password,
                 msw_hostname = msw_info['hostname'],
                 msw_serial = msw_info['serial'],
@@ -137,9 +143,11 @@ class Msw(FortiCli):
     def login_fgt(self):
         let = self.login(addr=self.fg_addr, user=self.fg_user, password=self.fg_password)
 
-    def login_msw(self):
+    def login_msw(self, msw_user='admin', msw_password=None):
         let = self.login_fgt()
-        let = self.execute_ssh(self.addr, self.user, self.password)
+        msw_user = msw_user or 'admin'
+        msw_password = msw_password or self.password
+        let = self.execute_ssh(self.addr, msw_user, msw_password)
         # if self.output_standard_flg is False:
         #     self.output_standard()
         
@@ -185,9 +193,6 @@ if __name__ == '__main__':
         target='172.16.201.201',
         alias=None,
     )
-
-
-
 
     let = fgt_msw_cli.gen_msw_list()
     msw_list = fgt_msw_cli.msw_list

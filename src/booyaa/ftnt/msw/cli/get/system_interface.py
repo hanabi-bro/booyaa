@@ -5,7 +5,7 @@ class SystemInterface:
         self.cli = cli
 
     def get(self):
-        cmd = 'get system interface'
+        cmd = 'get system interface | grep .*'
         return self.cli.execute_command(cmd)
 
     def have_ip(self, ip_addr):
