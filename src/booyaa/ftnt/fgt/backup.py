@@ -1,33 +1,18 @@
 from booyaa.ftnt.fgt import Fgt
 from booyaa.common.export.save_file import save_config
 from booyaa.common.fire_and_forget import fire_and_forget
+
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from pathlib import Path
 
+
 class FgtBackup:
     def __init__(self):
-        super().__init__()
-
         self.fgt_list = []
-        tmp = {
-            'addr': '',
-            'user': '',
-            'password': '',
-            'alias': '',
-            'hostname': '',
-            'ssh_port': 22,
-            'https_port': 443,
-            'get_secondary': False,
-            'backup_dir': 'fg_config',
-            'progress': {
-                'login': {'code': 0, 'msg': '', 'output': '', 'result': ''},
-                'backup': {'code': 0, 'msg': '', 'output': '', 'result': ''},
-                'logout': {'code': 0, 'msg': '', 'output': '', 'result': ''},
-            }
-        }
-
+        self.fgt = Fgt()
         self.backup_dir = Path('fg_config')
+        self.backup_loop = False
 
 
     def set_fgt_list(self, fgt_list):
@@ -37,36 +22,53 @@ class FgtBackup:
             fgt_obj.setup(**fgt_login_params)
             self.fgt_list.append(fgt_obj)
 
+    # @fire_and_forget
+    def run_backup(self):
+        for fgt in self.fgt_list:
+            fgt.run_backup()
+            sleep(1)
+
     @fire_and_forget
-    def multi_bulk_run(self):
+    def run_backup_parallel(self):
         self.backup_loop = True
-        results = []
+        self.futures = []
         with ThreadPoolExecutor(max_workers=5) as executor:
             for fgt in self.fgt_list:
-                results.append(executor.submit(fgt.run_backup))
-                sleep(0.5)
-        [r.result() for r in results]
+                self.futures.append(executor.submit(fgt.run_backup))
+                sleep(1)
+            for future in self.futures:
+                try:
+                    future.result()  # 例外が発生した場合にキャッチするために必要
+                except Exception as e:
+                    print(f"Error occurred: {e}")
 
-        sleep(0.5)
+        # [r.result() for r in self.futures]
+        sleep(1)
         self.backup_loop = False
-
-    # for fgt in fgtbak.fgt_list:
-    #     let = fgt.run_primary_backup()
-    #     print(fgt.progress['login']['msg'])
-    #     print(fgt.progress['backup']['msg'])
-    #     print(fgt.progress['logout']['msg'])
 
 
 class FgtObj(Fgt):
     def __init__(self):
         super().__init__()
-        self.progress = {
+        self.primary_progress = {
+            'login': {'code': -999, 'msg': '', 'output': '', 'result': ''},
+            'backup': {'code': -999, 'msg': '', 'output': '', 'result': ''},
+            'logout': {'code': -999, 'msg': '', 'output': '', 'result': ''},
+        }
+        self.secondary_progress = {
+            'login': {'code': -999, 'msg': '', 'output': '', 'result': ''},
+            'backup': {'code': -999, 'msg': '', 'output': '', 'result': ''},
+            'logout': {'code': -999, 'msg': '', 'output': '', 'result': ''},
+        }
+        self.cui_progress = {
             'login': {'code': -999, 'msg': '', 'output': '', 'result': ''},
             'backup': {'code': -999, 'msg': '', 'output': '', 'result': ''},
             'logout': {'code': -999, 'msg': '', 'output': '', 'result': ''},
         }
         self.msg = ''
-        self.config = []
+        self.primary_config = ''
+        self.secondary_config = ''
+
         self.get_secondary = ''
         self.backup_dir = ''
         self.cli.display = False
@@ -90,8 +92,7 @@ class FgtObj(Fgt):
         else:
             let['result'] = '[red]NG[/]'
 
-        self.progress['login'] = let
-        self.msg = self.progress['login']['msg']
+        self.primary_progress['login'] = let
 
         return let
 
@@ -110,8 +111,7 @@ class FgtObj(Fgt):
             else:
                 let['result'] = '[red]NG[/]'
 
-        self.progress['backup'] = let
-        self.msg = self.progress['backup']['msg']
+        self.primary_progress['backup'] = let
 
         return let
 
@@ -122,19 +122,25 @@ class FgtObj(Fgt):
         else:
             let['result'] = '[red]NG[/]'
 
-        self.progress['logout'] = let
+        self.primary_progress['logout'] = let
 
         return let
 
     def run_primary_backup(self):
         let = self.primary_login()
+        self.cui_progress['login'] = let
+        self.msg = let['msg']
+        if let['code'] != 0:
+            return let
 
-        if let['code'] > 0:
-            return let
         let = self.primary_backup()
+        self.cui_progress['backup'] = let
+        self.msg = let['msg']
         if let['code'] > 0:
             return let
+
         let = self.primary_logout()
+        self.cui_progress['logout'] = let
         if let['code'] > 0:
             return let
 
@@ -142,34 +148,28 @@ class FgtObj(Fgt):
 
     def secondary_login(self):
         # Primaryにログイン
-        _result = self.progress['login']['result']
         let = self.cli.login()
         if let['code'] == 0:
             let['msg'] = f'Login to Primary {self.fgt_info.addr}:{self.fgt_info.https_port}'
+            let['result'] = '[green]OK[/]'
         else:
-            let['result'] = _result + '\n[red]NG[/]'
-            self.progress['login'] = let
-    
-            self.msg += f'\n{self.progress['login']['msg']}'
-
+            let['result'] = '[red]NG[/]'
             return let
 
         # Secondaryにログイン
         let = self.cli.login_secondary()
         if let['code'] == 0:
             let['msg'] = f'Login to Secondary {self.fgt_info.addr}:{self.fgt_info.https_port}'
-            let['result'] = _result + '\n[green]OK[/]'
+            let['result'] = '[green]OK[/]'
         else:
-            let['result'] = _result + '\n[red]NG[/]'
+            let['result'] = '[red]NG[/]'
 
-        self.progress['login'] = let
-        self.msg += f'\n{self.progress['login']['msg']}'
+        self.secondary_progress['login'] = let
 
         return let
-    
+
     def secondary_backup(self):
         """"""
-        _result = self.progress['backup']['result']
         let = self.cli.show.get()
         if let['code'] == 0:
             let = save_config(
@@ -183,28 +183,26 @@ class FgtObj(Fgt):
             )
 
             if let['code'] == 0:
-                let['result'] = _result +  '\n[g]OK[/]'
+                let['result'] = '[green]OK[/]'
             else:
-                let['result'] = _result + '\n[r]NG[/]'
+                let['result'] = '[red]NG[/]'
 
-        self.progress['backup'] = let
-        self.msg += f'\n{self.progress['backup']['msg']}'
+        self.secondary_progress['backup'] = let
 
         return let
 
     def secondary_logout(self):
         # secondaryからexit
-        _result = self.progress['logout']['result']
         let = self.cli.exit()
         # primaryからlogout
 
         let = self.cli.logout()
         if let['code'] == 0:
-            let['result'] = _result + '[g]OK[/]'
+            let['result'] = '[green]OK[/]'
         else:
-            let['result'] = _result + '\n[r]NG[/]'
+            let['result'] = '[red]NG[/]'
 
-        self.progress['logout'] = let
+        self.secondary_progress['logout'] = let
 
         return let
 
@@ -212,21 +210,38 @@ class FgtObj(Fgt):
         let = {'code': -999, 'msg': '', 'output': '', 'result': ''}
         if self.fgt_info.ha_mode == 'Standalone':
             let['code'] = -999
-            let['msg'] = self.progress['login']['msg'] + '\nStandalone'
-            let['result'] = self.progress['login']['result'] + '\n[red]NG[/]'
+            let['msg'] = 'Standalone'
+            let['result'] = '[red]NG[/]'
+            self.secondary_progress['login'] = let
+
+            let['msg'] = f'{self.primary_progress['backup']['msg']}\n{self.secondary_progress['login']['msg']}'
+            let['result'] = f'{self.primary_progress['login']['result']}\n{self.secondary_progress['login']['result']}'
+            self.cui_progress['login'] = let
+
             self.msg = let['msg']
-            self.progress['login'] = let
 
             return let
 
         let = self.secondary_login()
         if let['code'] > 0:
+            let['msg'] = f'{self.primary_progress['login']['msg']}\n{self.secondary_progress['login']['msg']}'
+            let['result'] = f'{self.primary_progress['login']['result']}\n{self.secondary_progress['login']['result']}'
+            self.cui_progress['login'] = let
+            self.msg = let['msg']
             return let
+
         let = self.secondary_backup()
         if let['code'] > 0:
+            let['msg'] = f'{self.primary_progress['backup']['msg']}\n{self.secondary_progress['backup']['msg']}'
+            let['result'] = f'{self.primary_progress['backup']['result']}\n{self.secondary_progress['backup']['result']}'
+            self.cui_progress['backup'] = let
+            self.msg = let['msg']
             return let
         let = self.secondary_logout()
         if let['code'] > 0:
+            let['msg'] = f'{self.primary_progress['logout']['msg']}\n{self.secondary_progress['logout']['msg']}'
+            let['result'] = f'{self.primary_progress['logout']['result']}\n{self.secondary_progress['logout']['result']}'
+            self.cui_progress['logout'] = let
             return let
 
         return let
@@ -243,16 +258,16 @@ class FgtObj(Fgt):
 
 
 if __name__ == '__main__':
-    tmp = [ 
+    fgt_login_list = [
         {
             'addr': '172.16.201.201',
             'user': 'admin',
             'password': 'P@ssw0rd',
             'alias': '',
             'hostname': '',
+            'get_secondary': 'yes',
             'ssh_port': 22,
             'https_port': 443,
-            'get_secondary': 'yes',
             'backup_dir': 'fg_config',
         },
         {
@@ -261,11 +276,13 @@ if __name__ == '__main__':
             'password': 'P@ssw0rd',
             'alias': '',
             'hostname': '',
+            'get_secondary': 'no',
             'ssh_port': 22,
             'https_port': 443,
         },
     ]
-    fgtbak = FgtBackup()
-    fgtbak.set_fgt_list(tmp)
+    fgt_backup = FgtBackup()
+    fgt_backup.set_fgt_list(fgt_login_list)
+    fgt_backup.run_backup_parallel()
+    # fgt_backup.run_backup()
 
-    fgtbak.multi_bulk_run()

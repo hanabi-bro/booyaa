@@ -59,16 +59,16 @@ class CuiFgtBackup(FgtBackup):
                 fgt_obj.fgt_info.user,
                 passwd,
                 fgt_obj.fgt_info.alias,
-                fgt_obj.progress['login']['result'],
-                fgt_obj.progress['backup']['result'],
-                fgt_obj.progress['logout']['result'],
+                fgt_obj.cui_progress['login']['result'],
+                fgt_obj.cui_progress['backup']['result'],
+                fgt_obj.cui_progress['logout']['result'],
                 fgt_obj.msg
             )
         return table
 
     def tui_run(self):
         with Live(self.update_table(), refresh_per_second=4) as live:
-            self.multi_bulk_run()
+            self.run_backup_parallel()
             # SIGINT (Ctrl+C)をキャッチして停止
             def signal_handler(sig, frame):
                 self.backup_loop = False  # ping_loopはなぜかeventでは止まらない？？？
@@ -80,6 +80,11 @@ class CuiFgtBackup(FgtBackup):
                 live.update(self.update_table())
                 sleep(0.1)
 
+            # 最終更新
+            sleep(0.5)
+            live.update(self.update_table())
+
+
     def load_list(self, list_csv_path, max_cols=8):
         headers = ['addr', 'user', 'password', 'alias', 'get_secondary', 'backup_direcotry', 'https_port', 'ssh_port']
         list_csv_path = Path(list_csv_path)
@@ -88,7 +93,6 @@ class CuiFgtBackup(FgtBackup):
             exit()
 
         self.args_fgt_list = []
-        csv_list = []
 
         # ファイルからリストを作成
         with open(list_csv_path, newline="", encoding="utf-8") as f:
@@ -111,7 +115,7 @@ class CuiFgtBackup(FgtBackup):
 
 
 if __name__ == '__main__':
-    tmp = [ 
+    fgt_login_list = [
         {
             'addr': '172.16.201.201',
             'user': 'admin',
@@ -136,9 +140,9 @@ if __name__ == '__main__':
     ]
     fgtbak = CuiFgtBackup()
 
-    fgtbak.load_list('tmp/list.csv')
+    # fgtbak.load_list('tmp/list.csv')
     # fgtbak.set_fgt_list(fgtbak.args_fgt_list)
-    fgtbak.set_fgt_list(tmp)
+    fgtbak.set_fgt_list(fgt_login_list)
     fgtbak.tui_run()
 
 

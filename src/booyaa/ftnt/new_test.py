@@ -24,7 +24,7 @@ if __name__ == '__main__':
         'msw_password': 'P@ssw0rd',
         'timeout': 30,
     }
-    
+
     mswcli = MswCli()
     mswcli.set_target(**target_info)
     mswcli.display = True

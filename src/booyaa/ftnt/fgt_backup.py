@@ -46,8 +46,8 @@ class FgtBackup:
             for target_info in self.target_info_list:
                 results.append(executor.submit(self.run, target_info))
                 sleep(0.5)
+
         [r.result() for r in results]
-        sleep(0.5)
         self.backup_loop = False
 
 
@@ -147,7 +147,7 @@ class FgtBackup:
                 ]
             else:
                 func_args = []
-            
+
             let = func(*func_args)
 
             target_info['progress'][func_name]['msg'] = let['msg']
