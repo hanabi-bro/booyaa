@@ -42,7 +42,6 @@ class FgtBackup:
                 except Exception as e:
                     print(f"Error occurred: {e}")
 
-        # [r.result() for r in self.futures]
         sleep(1)
         self.backup_loop = False
 

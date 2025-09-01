@@ -196,7 +196,7 @@ class WebUiState:
     "utc_last_reboot":1753656021000,
     "time_zone_offset":-720,
     "time_zone_text":"(GMT+12:00) Eniwetok, Kwajalein",
-    "time_zone_db_name":"Pacific\/Kwajalein",
+    "time_zone_db_name":'Pacific/Kwajalein',
     "centrally_managed":False,
     "fortimanager_backup_mode":False,
     "fips_cc_enabled":False,

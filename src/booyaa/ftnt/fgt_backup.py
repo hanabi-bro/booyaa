@@ -1,175 +1,23 @@
 from rich.live import Live
 from rich.table import Table
 from pathlib import Path
-import sys
-
-from booyaa.ftnt.fg.api import FortiApi
-from booyaa.ftnt.fg.cli import FortiCli
-from booyaa.common.export.save_file import save_config
-
-from concurrent.futures import ThreadPoolExecutor
-from booyaa.common.fire_and_forget import fire_and_forget
-from signal import signal, SIGINT
 from time import sleep
+import csv
 
+from booyaa.ftnt.fgt.backup import FgtBackup
 
-class FgtBackup:
-    def __init__(self, config_ini=Path(Path(__file__).parent.resolve(), 'forti_backup.ini')):
-        self.config_ini = config_ini
-        self.backup_dir = Path()
-
-    def setup(self, target_info_list, nomask=False, backup_dir='fg_config'):
-        self.target_info_list = target_info_list
-        self.nomask = nomask
-        for target_info in self.target_info_list:
-            target_info.setdefault('progress', {})
-            target_info.setdefault('hostname', '')
-            target_info['progress'].setdefault('login', {'result': '', 'msg': ''})
-            target_info['progress'].setdefault('backup', {'result': '', 'msg': ''})
-            target_info['progress'].setdefault('save', {'result': '', 'msg': ''})
-            target_info['progress'].setdefault('logout', {'result': '', 'msg': ''})
-            target_info['progress'].setdefault('secondary_login', {'result': '', 'msg': ''})
-            target_info['progress'].setdefault('secondary_backup', {'result': '', 'msg': ''})
-            target_info['progress'].setdefault('secondary_logout', {'result': '', 'msg': ''})
-        self.backup_dir = Path(backup_dir)
-
-    def bulk_run(self):
-        """"""
-        for target_info in self.target_info_list:
-            self.run(target_info)
-
-    @fire_and_forget
-    def multi_bulk_run(self):
-        self.backup_loop = True
-        results = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            for target_info in self.target_info_list:
-                results.append(executor.submit(self.run, target_info))
-                sleep(0.5)
-
-        [r.result() for r in results]
-        self.backup_loop = False
-
-
-    def run(self, target_info):
-        """run backup
-        :param target_info: dict with keys 'target', 'user', 'password', 'alias_name'
-        :return: None
-        :rtype: None
-        バックアップノードはAPIなどで取れないので、CLIのshowを取得
-        ステータスなど確認して、HA mode a-pだったらバックアップのshowを取得
-
-        """
-        api_ftb = FortiApi()
-        let = api_ftb.set_target(
-            target_info['target'],
-            target_info['user'],
-            target_info['password'],
-            target_info['alias_name'],
-            backup_dir=self.backup_dir
-        )
-
-        #---------------------#
-        # Primary Backup
-        #---------------------#
-        func_dict = {
-            'login': api_ftb.login,
-            'backup': api_ftb.monitor.system_config_backup.get,
-            'save': save_config,
-            'logout': api_ftb.logout
-        }
-
-        # primary node
-        for func_name, func in func_dict.items():
-            if func_name == 'save':
-                func_args = [
-                    target_info['config'],
-                    api_ftb.hostname,
-                    api_ftb.fg_alias,
-                    api_ftb.version,
-                    self.backup_dir
-                ]
-            else:
-                func_args = []
-            
-            let = func(*func_args)
-
-            target_info['progress'][func_name]['msg'] = let['msg']
-            if let['code'] == 0:
-                if func_name == 'login':
-                    target_info['hostname'] = api_ftb.hostname
-                elif func_name == 'backup':
-                    target_info['config'] = let['output']
-                target_info['progress'][func_name]['result'] = 'OK'
-            else:
-                target_info['progress'][func_name]['result'] = '[red]NG[/]'
-                target_info['message'] = let['msg']
-                return
-
-        # HA判定
-        if target_info['secondary'] is False or api_ftb.ha_mode != 'Active-Passive' or api_ftb.ha_role != 'main':
-            return
-
-        # @todo managed interfaceかどうか判定
-
-        # secondary node
-        cli_ftb = FortiCli()
-
-        # #========debug============
-        cli_ftb.display = False
-        # #========debug============
-
-        let = cli_ftb.set_target(
-            target_info['target'],
-            target_info['user'],
-            target_info['password'],
-            target_info['alias_name']
-        )
-
-        cli_func_dict = {
-            'login': cli_ftb.bastion_login_secondary,
-            'backup': cli_ftb.show.get,
-            'save': save_config,
-            'logout': cli_ftb.bastion_logout_secondary,
-        }
-
-        target_info['target'] += '\n ┗━ Standby Node'
-        # Secondary node
-        for func_name, func in cli_func_dict.items():
-            if func_name == 'save':
-                func_args = [
-                    target_info['config'],
-                    api_ftb.secondary_hostname,
-                    api_ftb.fg_alias,
-                    api_ftb.version,
-                    self.backup_dir,
-                    'text',
-                ]
-            else:
-                func_args = []
-
-            let = func(*func_args)
-
-            target_info['progress'][func_name]['msg'] = let['msg']
-
-            if let['code'] == 0:
-                if func_name == 'login':
-                    target_info['hostname'] += f'\n{api_ftb.secondary_hostname}'
-                elif func_name == 'backup':
-                    target_info['config'] = let['output']
-                target_info['progress'][func_name]['result'] += '\nOK'
-            else:
-                target_info['progress'][func_name]['result'] += '\n[red]NG[/]'
-                target_info['message'] = let['msg']
-                return
-
-        return
+class CuiFgtBackup(FgtBackup):
+    def __init__(self):
+        self.nomask = False
+        self.msg = ''
+        self.args_fgt_list = []
+        super().__init__()
 
     def update_table(self):
         table = Table(title=f'FortiGate Backup\n{self.backup_dir.resolve()}')
 
         # table header
-        table.add_column("Target", style="cyan", no_wrap=True)
+        table.add_column("Addr", style="cyan", no_wrap=True)
         table.add_column("Hostname", style="cyan", no_wrap=True)
         table.add_column("User", style="magenta")
         table.add_column("Password", style="magenta")
@@ -179,63 +27,128 @@ class FgtBackup:
         table.add_column("Logout", style="green")
         table.add_column("Message", style="white")
 
+        tmp = {
+            'addr': '',
+            'user': '',
+            'password': '',
+            'alias': '',
+            'hostname': '',
+            'ssh_port': 22,
+            'https_port': 443,
+            'get_secondary': 'no',
+            'backup_dir': 'fg_config',
+            'progress': {
+                'login': {'code': 0, 'msg': '', 'output': '', 'result': ''},
+                'backup': {'code': 0, 'msg': '', 'output': '', 'result': ''},
+                'logout': {'code': 0, 'msg': '', 'output': '', 'result': ''},
+            }
+        }
+
+
         # table body
-        for target_info in self.target_info_list:
+        for fgt_obj in self.fgt_list:
             # パスワードマスク
             if self.nomask:
-                passwd = target_info['password']
+                passwd = fgt_obj.fgt_info.password
             else:
-                passwd = '*' * len(target_info['password'])
+                passwd = '*' * len(fgt_obj.fgt_info.password)
+
+            # secondary yes
+            hostname = fgt_obj.fgt_info.hostname
+            if fgt_obj.get_secondary == 'yes':
+                hostname += '\n' + fgt_obj.fgt_info.secondary_hostname
 
             table.add_row(
-                target_info['target'],
-                target_info['hostname'],
-                target_info['user'],
+                fgt_obj.fgt_info.addr,
+                hostname,
+                fgt_obj.fgt_info.user,
                 passwd,
-                target_info['alias_name'],
-                target_info['progress']['login']['result'],
-                target_info['progress']['backup']['result'],
-                target_info['progress']['logout']['result'],
-                target_info['message']
+                fgt_obj.fgt_info.alias,
+                fgt_obj.cui_progress['login']['result'],
+                fgt_obj.cui_progress['backup']['result'],
+                fgt_obj.cui_progress['logout']['result'],
+                fgt_obj.msg
             )
         return table
 
     def tui_run(self):
         with Live(self.update_table(), refresh_per_second=4) as live:
-            self.multi_bulk_run()
+            self.run_backup_parallel()
             # SIGINT (Ctrl+C)をキャッチして停止
             def signal_handler(sig, frame):
                 self.backup_loop = False  # ping_loopはなぜかeventでは止まらない？？？
 
-            signal(SIGINT, signal_handler)
+            # signal(SIGINT, signal_handler)
 
             # 実行ループ (Ctrl+Cで停止)
             while self.backup_loop:
                 live.update(self.update_table())
                 sleep(0.1)
 
+            # 最終更新
+            sleep(0.5)
+            live.update(self.update_table())
+
+
+    def load_list(self, list_csv_path, max_cols=8):
+        headers = ['addr', 'user', 'password', 'alias', 'get_secondary', 'backup_direcotry', 'https_port', 'ssh_port']
+        list_csv_path = Path(list_csv_path)
+        if not list_csv_path.is_file():
+            print(f'[Error]Can not file open {list_csv_path.resolve()}')
+            exit()
+
+        self.args_fgt_list = []
+
+        # ファイルからリストを作成
+        with open(list_csv_path, newline="", encoding="utf-8") as f:
+            _args_list = csv.reader(f)
+            for i, row in enumerate(_args_list):
+                # 1行目がヘッダ行だったら削除する
+                if i == 0 and row[0] in ['fg_addr', 'addr']:
+                    continue
+
+                # カンマずれ等を補正
+                if len(row) < max_cols:
+                    row.extend([""] * (max_cols - len(row)))
+                # 多すぎれば切り捨てる
+                elif len(row) > max_cols:
+                    row = row[:max_cols]
+
+                row_dict = dict(zip(headers, row))
+
+                self.args_fgt_list.append(row_dict)
+
 
 if __name__ == '__main__':
-    dummy_target_list = [
+    fgt_login_list = [
         {
-            'target': '172.16.201.201:443',
+            'addr': '172.16.201.201',
             'user': 'admin',
             'password': 'P@ssw0rd',
-            'alias_name': 'LabFG01'
+            'alias': '',
+            'hostname': '',
+            'get_secondary': 'yes',
+            'ssh_port': 22,
+            'https_port': 443,
+            'backup_dir': 'fg_config',
         },
         {
-            'target': '172.16.201.202',
+            'addr': '172.16.201.202',
             'user': 'admin',
             'password': 'P@ssw0rd',
-            'alias_name': 'LabFG02'
+            'alias': '',
+            'hostname': '',
+            'get_secondary': 'no',
+            'ssh_port': 22,
+            'https_port': 443,
         },
-        # {
-        #     'target': '172.16.201.201',
-        #     'user': 'nwadmin',
-        #     'password': 'mypassword',
-        #     'alias_name': 'LabFG02'
-        # },
     ]
+    # fgtbak = CuiFgtBackup()
+
+    # # fgtbak.load_list('tmp/list.csv')
+    # # fgtbak.set_fgt_list(fgtbak.args_fgt_list)
+    # fgtbak.set_fgt_list(fgt_login_list)
+    # fgtbak.tui_run()
 
 
     from argparse import ArgumentParser, RawTextHelpFormatter
@@ -252,12 +165,12 @@ if __name__ == '__main__':
     ## CLI usage
     ### Primary Only
     ```
-    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd
+    fgt_bak -t 172.16.201.201 -u admin -p my_password
     ```
 
     ### Primary and Secondary
     ```
-    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd -s
+    fgt_bak -t 172.16.201.201 -u admin -p my_password -s
     ```
 
     ## CSV File usage
@@ -267,19 +180,18 @@ if __name__ == '__main__':
 
     ### target csv format is below
     * [optional]header line
-        - fg_addr,user,password,alias,backup_secondary
+        - fg_addr,user,password,alias,get_secokdary,backup_direcotry,https_port,ssh_port
     * Data Line
-        - <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>,[optional]<backup secondary node(via cli show)>
+        - <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>,[optional]<backup secondary node(via cli show),[optional]https port,[optional]ssh port>
     e.g.)
     ```
-    fg_addr,user,password,alias,backup_secondary
-    172.16.201.201,admin,P@ssw0rd,Lab-FG01,yes
-    192.0.2.1,nw_admin,P@ssw0rd
+    fg_addr,user,password,alias,get_secokdary,backup_direcotry,https_port,ssh_port
+    172.16.201.201,admin,my_password,Lab-FG01,yes
+    192.0.2.1,nw_admin,nw_admin_password
     ```
     """)
 
     parser = MyArgumentParser(description=msg, formatter_class=RawTextHelpFormatter)
-
     # 直接指定とファイル指定は同時に使えない
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-t', '--target', help='ipaddr or hostname\ne.g.) forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd')
@@ -297,6 +209,12 @@ if __name__ == '__main__':
     # ログ出力ディレクトリ指定
     parser.add_argument('-d', '--directory', default='./fg_config', help='backup directory path default is ./fg_config')
 
+    # https port
+    parser.add_argument('--https_port', default=443, help='HTTPS port default is 443')
+
+    # ssh port
+    parser.add_argument('--ssh_port', default=22, help='SSH port default is 22')
+
     # パスワードマスク
     parser.add_argument('--nomask', help='[optional]No Password Mask, default is True', action='store_true')
 
@@ -306,51 +224,25 @@ if __name__ == '__main__':
     if args.target and (not args.user or not args.password):
         parser.error("--u and -p are required when -t is specified.")
 
-    target_info_list = []
+    fgt_login_list = []
+
+    fgtbak = CuiFgtBackup()
 
     if args.target:
-        target_info_list = [{
-            'target': args.target,
+        fgt_login_list = [{
+            'addr': args.target,
             'user': args.user,
             'password': args.password,
-            'alias_name': args.name,
-            'secondary': args.secondary,
-            'message': '',
+            'alias': args.name,
+            'hostname': '',
+            'get_secondary': 'yes' if args.secondary else 'no',
+            'https_port': args.https_port,
+            'ssh_port': args.ssh_port,
+            'backup_dir': args.directory,
         }]
-
     elif args.file:
-        if not Path(args.file).is_file():
-            print(f'Error: can not file open {Path(args.file).resolve()}')
-            exit(1)
+        fgtbak.load_list(args.file)
+        fgt_login_list = fgtbak.args_fgt_list
 
-        with open(args.file, 'r', encoding='utf-8_sig') as f:
-            lines = f.read().splitlines()
-
-        for i, line in enumerate(lines):
-            target_info = line.split(',')
-            if i == 0 and target_info[0] == 'fg_addr':
-                continue
-
-            # Secandary Node BackupCheckk
-            secondary = False
-            if len(target_info) >= 5:
-                secondary = True if target_info[4] == 'yes' else False
-
-            target_info_list.append({
-                'target': target_info[0],
-                'hostname': '',
-                'user': target_info[1],
-                'password': target_info[2],
-                'alias_name': target_info[3] if len(target_info) > 3 else '',
-                'secondary': secondary,
-                'message': '',
-                'config': b'',
-            })
-
-    ftb = FgtBackup()
-    ftb.setup(target_info_list, nomask=args.nomask)
-    ftb.tui_run()
-
-    sys.exit()
-
-
+    fgtbak.set_fgt_list(fgt_login_list)
+    fgtbak.tui_run()

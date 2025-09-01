@@ -1,6 +1,8 @@
 # Forti Config Backup
 fortigateのバックアップを取得してファイルに保存する。
+Secondary NodeはCLIでコンフィグを取得。
 保存ディレクトリは`fg_config`(実行ディレクトリ上)
+
 
 ## CLI usage
 ### Primary Only
@@ -24,13 +26,14 @@ fgt_bak -f target.csv
 ```
 
 ### target csv format is below
+### target csv format is below
 * [optional]header line
-    - fg_addr,user,password,alias,backup_secondary
+    - addr,user,password,alias,get_secokdary,backup_direcotry,https_port,ssh_port
 * Data Line
-    - <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>,[optional]<backup secondary node(via cli show)>
+    - <fortigate addr>,<username>,<passwod>,[optional]<logfile prefix>,[optional]<backup secondary node(via cli show),[optional]https port,[optional]ssh port>
 e.g.)
-```csv
-fg_addr,user,password,alias,backup_secondary
+```
+addr,user,password,alias,get_secokdary,backup_direcotry,https_port,ssh_port
 172.16.201.201,admin,P@ssw0rd,Lab-FG01,yes
 192.0.2.1,nw_admin,P@ssw0rd
 ```
