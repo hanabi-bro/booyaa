@@ -66,8 +66,8 @@ $path += ";$bin_dir"
 ```powershell
 $bin_dir = "c:\opt\bin"
 $app_dir = "c:\opt\apps"
-$app_name = "fgt_bak"
-$app_exe = "fgt_bak.exe"
+$app_name = "fgt_bakup"
+$app_exe = "fgt_bakup.exe"
 mkdir $app_dir
 ```
 

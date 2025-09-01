@@ -6,9 +6,9 @@ python -m nuitka `
   --standalone `
   --follow-imports `
   --windows-console-mode=force `
-  --output-filename=fgt_bak `
+  --output-filename=fgt_backup `
   --windows-icon-from-ico=./icon/forti_backup/FGT_BAK.ico `
-  --include-data-files=./src/booyaa/ftnt/readme_fgt_bak.md=./ `
+  --include-data-files=./src/booyaa/ftnt/readme_fgt_backup.md=./ `
   ./src/booyaa/ftnt/fgt_backup.py
 ```
 
@@ -19,9 +19,9 @@ python -m nuitka `
   --standalone `
   --follow-imports `
   --windows-console-mode=force `
-  --output-filename=msw_bak `
+  --output-filename=msw_backup `
   --windows-icon-from-ico=./icon/forti_backup/MSW_BAK.ico `
-  --include-data-files=./src/booyaa/ftnt/readme_msw_bak.md=./ `
+  --include-data-files=./src/booyaa/ftnt/readme_msw_backup.md=./ `
   ./src/booyaa/ftnt/msw_backup.py
 ```
 
