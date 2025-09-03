@@ -1,229 +1,68 @@
-from booyaa.ftnt.fg.api import FortiApi
-from booyaa.ftnt.fg.cli import FortiCli
-
+from booyaa.ftnt.fgt.api import FgtApi
+from booyaa.ftnt.msw.model.msw_info import MswInfo
+from booyaa.ftnt.fgt.model.fgt_info import FgtInfo
 from booyaa.ftnt.msw.cli import MswCli
-from booyaa.ftnt.msw.cli.get import Get as MswGet
-from booyaa.ftnt.msw.cli.show import Show as MswShow
-
-from booyaa.common.export.save_file import save_config
-
-from pathlib import Path
-from traceback import format_exc
-
-class FgtMswCli(FortiCli):
-    def __init__(self):
-        super().__init__()
-
-        self.fgt_cli = FortiCli()
-        self.fgt_api = FortiApi()
-        self.msw_list = []
-
-    def set_target(self, target, user, password, alias=None, timeout=30, backup_dir=r'fg_config'):
-        let = self.fgt_api.set_target(target=target, user=user, password=password, alias=alias, backup_dir=backup_dir)
-        return super().set_target(target=target, user=user, password=password, alias=alias, backup_dir=backup_dir)
-
-    def gen_msw_list(self, msw_port=None, msw_user=None, msw_password=None):
-        let = self.fgt_api.login()
-        if let['code'] != 0:
-            return let
-
-        let = self.fgt_api.get_node_info(self.fgt_api)
-        if let['code'] != 0:
-            return let
-        self.hostname = self.fg_hostname = self.fgt_api.hostname
-
-        if self.alias:
-            """"""
-        elif not self.alias and self.fgt_api.fg_alias:
-            """"""
-            self.alias = self.fgt_api.fg_alias
-        else:
-            self.alias = self.hostname
 
 
-        if not self.alias and self.fgt_api.fg_alias:
-            self.alias = self.fgt_api.fg_alias
+class Msw:
+    def __init__(self, fgt_info: FgtInfo | None = None, msw_info: MswInfo | None = None):
+        self.fgt_info = fgt_info or FgtInfo()
+        self.msw_info = msw_info or MswInfo()
+        self.fgt_api = FgtApi(self.fgt_info)
+        self.cli = MswCli(self.fgt_info, self.msw_info)
+        self.backup_dir = 'fg_config'
 
-        if self.fgt_api.version < '7.0.0':
-            let = self.fgt_api.monitor.switch_controller_managed_switch.get()
-            _list = self.fgt_api.monitor.switch_controller_managed_switch.msw_list
-        elif '7.0.0' <= self.fgt_api.version:
-            let = self.fgt_api.monitor.switch_controller_managed_switch_status.get()
-            _list = self.fgt_api.monitor.switch_controller_managed_switch_status.msw_list
-
-        if let['code'] != 0:
-            return let
-
-        self.msw_list = []
-
-        for msw_info in _list:
-            msw = Msw()
-            if self.backup_dir:
-                msw.backup_dir = Path(self.backup_dir)
-            msw.set_target(
-                fg_addr = self.addr,
-                fg_port = self.port or 22,
-                fg_user = self.user,
-                fg_password = self.password,
-                fg_hostname = self.hostname,
-                fg_serial = self.serial,
-                fg_alias = self.alias,
-                msw_addr = msw_info['addr'],
-                msw_port = msw_port or 22,
-                msw_user = msw_user or self.user,
-                msw_password = msw_password or self.password,
-                msw_hostname = msw_info['hostname'],
-                msw_serial = msw_info['serial'],
-                msw_state = msw_info['state'],
-                msw_status = msw_info['status'],
-                msw_model = msw_info['model'],
-                msw_version = msw_info['version'],
-                msw_build = msw_info['build'],
-            )
-            self.msw_list.append(msw)
-
-        return let
-
-
-class Msw(FortiCli):
-    def __init__(self):
-        super().__init__()
-        self.fgt_cli = FortiCli()
-        self.msw_cli = MswCli()
-
-        self.msw_cli.show = MswShow(self)
-        self.msw_cli.get = MswGet(self)
-
-        self.fg_addr = ''
-        self.fg_port = ''
-        self.fg_user = ''
-        self.fg_password = ''
-        self.fg_hostname = ''
-        self.fg_alias = ''
-        self.fg_serial = ''
-        self.fg_version = ''
-
-        self.node_info_flg = True
-        self.secondary_info_flg = True
-
-    def set_target(self, 
-            fg_addr, fg_port, fg_user, fg_password, fg_hostname, fg_serial, fg_alias,
-            msw_addr, msw_port, msw_user, msw_password, msw_hostname, msw_serial, msw_state, msw_status, msw_model, msw_version, msw_build
-        ):
-
-        self.fg_addr = fg_addr
-        self.fg_port = fg_port or 22
-        self.fg_user = fg_user
-        self.fg_password = fg_password
-        self.fg_alias = fg_alias
-        self.fg_hostname = fg_hostname
-        self.fg_serial = fg_serial
-        self.fg_version = fg_alias
-
-        self.addr = msw_addr
-        self.port = msw_port or 22
-        self.user = msw_user
-        self.password = msw_password
-        self.hostname = msw_hostname
-        self.serial = msw_serial
-        self.state = msw_state
-        self.status = msw_status
-        self.model = msw_model
-        self.version = msw_version
-        self.build = msw_build
-
-        self.config = ''
-
-    def login_fgt(self):
-        let = self.login(addr=self.fg_addr, user=self.fg_user, password=self.fg_password)
-
-    def login_msw(self):
-        let = self.login_fgt()
-        let = self.execute_ssh(self.addr, self.user, self.password)
-        # if self.output_standard_flg is False:
-        #     self.output_standard()
-        
-        return let
-
-    def logout_msw(self):
-        return self.logout()
-
-    def backup(self, full=False, cmd_strip=True, format='text', encode='utf-8', backup_dir=None):
+    def setup(self,
+            fgt_addr, fgt_user, fgt_password, alias='', fgt_hostname='', fgt_ssh_port=22, fgt_https_port=443,
+            msw_addr='', msw_user='', msw_password='', msw_hostname='', msw_ssh_port=22, msw_https_port=443,
+            backup_dir='', **kwargs):
         let = {'code': 0, 'msg': '', 'output': ''}
-        try:
-            backup_dir = Path(backup_dir or self.backup_dir)
-            backup_dir.mkdir(exist_ok=True)
 
-            self.backup_dir = Path(backup_dir or self.backup_dir, self.fg_alias or self.fg_hostname)
-            self.backup_dir.mkdir(exist_ok=True)
-        except Exception as e:
-            let['code'] = 1
-            let['msg'] = f'[Error]Failed backup directory {format_exc}'
+        # setup fgt info
+        self.fgt_info.addr = fgt_addr
+        self.fgt_info.user = fgt_user
+        self.fgt_info.password = fgt_password
+        self.fgt_info.alias = alias
+        self.fgt_info.hostname = fgt_hostname
+        self.fgt_info.ssh_port = fgt_ssh_port
+        self.fgt_info.https_port = fgt_https_port
 
-        let = self.msw_cli.show.get(full=full, cmd_strip=cmd_strip)
-        if let['code'] != 0:
-            return let
-        self.config = let['output']
-        let = save_config(
-            content=self.config,
-            hostname=self.hostname,
-            alias=None,
-            version=self.version,
-            export_dir=self.backup_dir,
-            format=format,
-            encode=encode
-        )
+        # setup msw info
+        self.msw_info.addr = msw_addr
+        self.msw_info.user = msw_user
+        self.msw_info.password = msw_password
+        self.msw_info.hostname = msw_hostname
+        self.msw_info.ssh_port = msw_ssh_port
+        self.msw_info.https_port = msw_https_port
+
+        # backup directory
+        self.bacup_dir = backup_dir or self.backup_dir
+        self.cli.backup_dir = self.backup_dir
+
         return let
 
 
 if __name__ == '__main__':
-    fgt_msw_cli = FgtMswCli()
-    fgt_msw_cli.display = True  # デバッグ用に出力を有効化
-    let = fgt_msw_cli.set_target(
-        user='admin',
-        password='P@ssw0rd',
-        target='172.16.201.201',
-        alias=None,
-    )
+    fg_info = {
+        'fgt_addr': '172.16.201.201',
+        'fgt_user': 'admin',
+        'fgt_password': 'P@ssw0rd',
+        'alias': '',
+        'fgt_hostname': '',
+        'get_secondary': 'yes',
+        'fgt_ssh_port': 22,
+        'fgt_https_port': 443,
+        'backup_dir': 'fg_config',
+        'timeout': 60
+    }
 
 
-
-
-    let = fgt_msw_cli.gen_msw_list()
-    msw_list = fgt_msw_cli.msw_list
-
-    for msw in msw_list:
-        msw.display = True
-        if msw.status == 'Connected':
-            let = msw.login_msw()
-            # let = msw.backup()
-            print(let)
-            # print(msw.fg_addr)
-            # print(msw.fg_port)
-            # print(msw.fg_user)
-            # print(msw.fg_password)
-            # print(msw.fg_alias)
-            # print(msw.fg_hostname)
-            # print(msw.fg_serial)
-            # print(msw.fg_version)
-            # print(msw.addr)
-            # print(msw.port)
-            # print(msw.user)
-            # print(msw.password)
-            # print(msw.hostname)
-            # print(msw.serial)
-            # print(msw.state)
-            # print(msw.status)
-            # print(msw.model)
-            # print(msw.version)
-            # print(msw.build)
-
-            msw.logout_msw()
-        else:
-            continue
-
-    # fgt_msw_cli.login()
-    # print(fgt_msw_cli)
-
-    # fgt_msw_cli.login()
+    msw = Msw()
+    msw.setup(**fg_info)
+    msw.cli.display=True
+    msw.cli.login_fgt()
+    msw.cli.login_msw(addr='10.255.1.1', user='admin', password='P@ssw0rd')
+    msw.cli.get.switch_physical_port.get()
+    msw.cli.logout_msw()
+    msw.cli.logout_fgt()
 

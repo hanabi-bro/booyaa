@@ -9,12 +9,7 @@ class Fgt:
         self.api = FgtApi(self.fgt_info)
         self.cli = FgtCli(self.fgt_info)
 
-    # def setup(self, **kwargs):
-    #     for k, v in kwargs.items():
-    #         if hasattr(self.fgt_info, k):
-    #             setattr(self.fgt_info, k, v)
-
-    def setup(self, addr, user, password, alias='', hostname='', ssh_port=22, https_port=443):
+    def setup(self, addr, user, password, alias='', hostname='', ssh_port=22, https_port=443, **kwargs):
         let = {'code': 0, 'msg': '', 'output': ''}
         self.fgt_info.addr = addr
         self.fgt_info.user = user

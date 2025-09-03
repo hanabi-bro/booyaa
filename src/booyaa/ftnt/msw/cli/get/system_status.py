@@ -18,7 +18,7 @@ class SystemStatus:
             return res
 
         pattern_dict = {
-            'versions': compile(r'Version:\s+FortiSwitch-(\S+)\s+v([\d.]+),build(\d+),.*', IGNORECASE),
+            'version': compile(r'Version:\s+FortiSwitch-(\S+)\s+v([\d.]+),build(\d+),.*', IGNORECASE),
             'serial': compile(r'Serial-Number:\s+(\w+)', IGNORECASE),
             'hostname': compile(r'Hostname:\s+(\S+)', IGNORECASE),
             'ng_test': compile(r'aabbss:\s+(\S+)', IGNORECASE),
@@ -27,7 +27,7 @@ class SystemStatus:
         for k, v in pattern_dict.items():
             matchs = v.search(res['output'])
             if matchs:
-                if k == 'versions':
+                if k == 'version':
                     setattr(self, 'model', f'FS{matchs.group(1)}')
                     setattr(self, 'version', matchs.group(2))
                     setattr(self, 'build', matchs.group(3))

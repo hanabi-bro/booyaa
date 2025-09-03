@@ -1,6 +1,3 @@
-# from booyaa.ftnt.fgt.cli import FgtCli
-
-
 def get_node_info(cli):
     """ノード情報を取得"""
     let = cli.get.system_status.get()
@@ -36,12 +33,13 @@ def get_node_info(cli):
     cli.fgt_info.ha_role = cli.get.system_status.ha_role
 
     # HAならHAノード情報の抽出
-    let = cli.get.system_ha_status.get()
-    if let['code'] != 0:
-        return let
-    
-    cli.fgt_info.secondary_hostname = cli.get.system_ha_status.secondary_hostname
-    cli.fgt_info.secondary_serial = cli.get.system_ha_status.secondary_serial
+    if cli.fgt_info.ha_mode == 'Active-Passive':
+        let = cli.get.system_ha_status.get()
+        if let['code'] != 0:
+            return let
+        
+        cli.fgt_info.secondary_hostname = cli.get.system_ha_status.secondary_hostname
+        cli.fgt_info.secondary_serial = cli.get.system_ha_status.secondary_serial
 
     # スイッチ情報取得
     let = cli.execute.switch_controller_get_conn_status.get()

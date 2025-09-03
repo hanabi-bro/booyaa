@@ -33,6 +33,23 @@ def save_config(content, hostname, alias, version, export_dir='./fg_config', for
     return let
 
 
+def save_msw_config(content, hostname='', alias='', version='', export_dir='./fg_config', format='text', encode='utf-8'):
+    # MSW用にペアレントのFGのaliasかホスト名フォルダを作成
+    backup_dir = Path(export_dir, alias or hostname )
+
+    config_file_name = f'{hostname}_{timestamp()}.conf'
+    if version:
+        try:
+            major, minor, patch = version.split('.')
+            config_file_name = f'{hostname}_{major}_{minor}_{patch}_{timestamp()}.conf'
+        except:
+            config_file_name = f'{hostname}_{timestamp()}.conf'
+
+    let = save_file(content, config_file_name, export_dir, format=format, encode=encode)
+
+    return let
+
+
 def save_file(content, export_name, export_dir='.', format=None, encode='utf-8'):
     """
     Args:
@@ -70,4 +87,5 @@ def save_file(content, export_name, export_dir='.', format=None, encode='utf-8')
         output = ''
 
     return {'code': code, 'msg': msg, 'output': output, 'trace': ''}
+
 

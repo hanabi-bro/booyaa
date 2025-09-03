@@ -60,12 +60,16 @@ class SystemStatus:
 
         if _ha_mode:
             if _ha_mode.group(1) == 'a-a':
-                self.ha_mode = 'active-active'
+                self.ha_mode = 'Active-Active'
             elif _ha_mode.group(1) == 'a-p':
-                self.ha_mode = 'active-passive'
+                self.ha_mode = 'Active-Passive'
             else:
-                self.ha_mode = 'standalone'
+                self.ha_mode = 'Standalone'
+                self.ha_role = _ha_mode.group(2) if _ha_mode.lastindex >= 2 else ''
+        else:
+            self.ha_mode = 'Standalone'
+            self.ha_role = ''
 
-            self.ha_role = _ha_mode.group(2) if _ha_mode.lastindex >= 2 else ''
+
 
         return res

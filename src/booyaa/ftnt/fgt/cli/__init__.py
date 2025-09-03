@@ -82,8 +82,6 @@ class FgtCli:
         password = password or self.fgt_info.password
         timeout = timeout or self.timeout
 
-        # アドレスがxx.xx.xx.xx:5022などの表記だった場合をサポート
-
         try:
             self.session = SSHClient()
             self.session.set_missing_host_key_policy(NoHostKeyCheckPolicy())
@@ -191,7 +189,7 @@ class FgtCli:
 
         return let
 
-    def execute_ssh(self, addr, user, password, timeout=None):
+    def execute_ssh(self, addr, user, password, port=22, timeout=None):
         let = {'code': 0, 'msg': '', 'output': ''}
         timeout = timeout or self.timeout
         #  vdomの場合は、globalに移動してSSHする
@@ -199,7 +197,7 @@ class FgtCli:
             let = self.config_global()
             # @todo グローバルモードであることの確認とエラー処理
         
-        cmd = f'execute ssh {user}@{addr}'
+        cmd = f'execute ssh {user}@{addr} {port}'
 
         self.interact.send(cmd)
         index = self.interact.expect(self.SSH_PROMPT, timeout=timeout)
