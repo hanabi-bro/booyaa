@@ -62,7 +62,7 @@ def save_file(content, export_name, export_dir='.', format=None, encode='utf-8')
     """
     export_file_path = Path(export_dir, export_name)
 
-    Path.mkdir(Path(export_dir), exist_ok=True)
+    Path.mkdir(Path(export_dir), parents=True, exist_ok=True)
 
     # オブジェクトのフォーマット判定
     if format is None:
