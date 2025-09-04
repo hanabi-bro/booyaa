@@ -229,11 +229,13 @@ if __name__ == '__main__':
     msg = dedent("""\
     ~~~ Forti MangedSwitch Config Backup ~~~
     ## CLI usage
-    `msw_bak -t <fg_addr> -u <fg_user> -p <fg_password>`
+    `msw_bak -t <fgt_addr> -u <fgt_user> -p <fgt_password>`
+    `msw_bak -t <fgt_addr> -u <fgt_user> -p <fgt_password>` --msw_user <msw_user> --msw_password <msw_password>
 
     e.g:
     ```
-    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd
+    fgt_bak -t 172.16.201.201 -u admin -p password
+    fgt_bak -t 172.16.201.201 -u mswadmin -p mswpassword
     ```
     """)
 

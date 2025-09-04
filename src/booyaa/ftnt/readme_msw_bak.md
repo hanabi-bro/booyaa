@@ -1,3 +1,20 @@
+# Forti Config Backup
+FortilinkのManaged SwitchのバックアップをCLIで取得。
+* Authorize/Upのみ対象
+* Managed Switchのユーザ名はデフォルトで'admin'、パスワードはFortiGateと同じ
+  - --msw_user, --msw_passwordで指定可能
+  - Switchごとに違うユーザ・パスワードには非対応
+
+## CLI usage
+`msw_bak -t <fgt_addr> -u <fgt_user> -p <fgt_password>`
+`msw_bak -t <fgt_addr> -u <fgt_user> -p <fgt_password>` --msw_user <msw_user> --msw_password <msw_password>
+
+e.g:
+```
+fgt_bak -t 172.16.201.201 -u admin -p password
+fgt_bak -t 172.16.201.201 -u mswadmin -p mswpassword
+```
+
 ## Install
 ### windows
 `c:\opt\bin`にパスを通してsymlinkを張る場合のサンプル。
@@ -25,8 +42,8 @@ $path += ";$bin_dir"
 ```powershell
 $bin_dir = "c:\opt\bin"
 $app_dir = "c:\opt\apps"
-$app_name = "msw_bak"
-$app_exe = "msw_bak.exe"
+$app_name = "msw_backup"
+$app_exe = "msw_backup.exe"
 mkdir $app_dir
 ```
 
