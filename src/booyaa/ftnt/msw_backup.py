@@ -82,28 +82,28 @@ class MswBackup:
 
         self.msw_user = ''
         self.msw_password = ''
-        self.backup_dir = Path('fg_config')
-        self.timeout = 60
 
         self.msw_obj_list = []
 
         self.backup_loop = True
-
         self.nomask = False
+        self.backup_dir = Path('fg_config')
+        self.timeout = 60
 
     def setup(self,
             fgt_addr, fgt_user, fgt_password, alias='', fgt_hostname='', fgt_ssh_port=22, fgt_https_port=443,
-            msw_user='', msw_password='',
-            backup_dir='', timeout=60,
+            msw_user='admin', msw_password='',
+            backup_dir='', timeout=None, nomask=False,
             **kwargs):
 
         self.fgt.setup(fgt_addr, fgt_user, fgt_password, alias, fgt_hostname, fgt_ssh_port, fgt_https_port)
 
         self.msw_user = msw_user
-        self.msw_password = msw_password
+        self.msw_password = msw_password or fgt_password
         # self.backup_dir = backup_dir or self.backup_dir
         self.backup_dir = Path(backup_dir or self.backup_dir)
         self.timeout = timeout or self.timeout
+        self.nomask = nomask
 
         let = self.fgt.api.login(addr=fgt_addr, user=fgt_user, password=fgt_password)
         self.fgt_info = self.fgt.api.fgt_info
@@ -112,7 +112,7 @@ class MswBackup:
 
     def gen_msw_obj_list(self):
         self.msw_obj_list = []
-        for l in msw_backup.fgt_info.msw_list:
+        for l in self.fgt_info.msw_list:
             msw_info = MswInfo()
             msw_progress = Progress()
             msw_info.addr = l['addr']
@@ -130,7 +130,7 @@ class MswBackup:
             self.msw_obj_list.append(msw_obj)
 
     def sequential_backup_run(self):
-        for msw_obj in msw_backup.msw_obj_list:
+        for msw_obj in self.msw_obj_list:
             msw_obj.cli.display=True
 
             # let = msw_obj.cli.login_fgt()
@@ -146,7 +146,7 @@ class MswBackup:
         results = []
         try:
             with ThreadPoolExecutor(max_workers=5) as executor:
-                for msw_obj in msw_backup.msw_obj_list:
+                for msw_obj in self.msw_obj_list:
                     results.append(executor.submit(msw_obj.run_backup, ))
                     sleep(1)
         except Exception as e:
@@ -178,7 +178,7 @@ class MswBackup:
             fgt_name = msw_obj.fgt_info.alias or msw_obj.fgt_info.hostname
             msw_hostname = msw_obj.msw_info.hostname
             msw_user = msw_obj.msw_info.user
-            msw_password = msw_obj.msw_info.password
+            msw_password = passwd
             msw_login = msw_obj.progress.login.result
             msw_backup = msw_obj.progress.backup.result
             msw_logout = msw_obj.progress.logout.result
@@ -217,26 +217,77 @@ class MswBackup:
 
 
 if __name__ == '__main__':
-    target_info = {
-        'fgt_addr': '172.16.201.201',
-        'fgt_user': 'admin',
-        'fgt_password': 'P@ssw0rd',
-        'alias': '',
-        'backup_dir': 'fgt_backup',
-        'msw_user': 'admin',
-        'msw_password': 'P@ssw0rd',
-    }
+    from argparse import ArgumentParser, RawTextHelpFormatter
+    from textwrap import dedent
 
-    msw_backup = MswBackup()
-    let = msw_backup.setup(**target_info)
-    let = msw_backup.gen_msw_obj_list()
+    class MyArgumentParser(ArgumentParser):
+        def error(self, message):
+            print('error occured while parsing args : '+ str(message))
+            self.print_help() 
+            exit()
 
-    msw_backup.tui_run()
+    msg = dedent("""\
+    ~~~ Forti MangedSwitch Config Backup ~~~
+    ## CLI usage
+    `msw_bak -t <fg_addr> -u <fg_user> -p <fg_password>`
 
-    # while msw_backup.backup_loop:
-    #     sleep(0.5)
+    e.g:
+    ```
+    fgt_bak -t 172.16.201.201 -u admin -p P@ssw0rd
+    ```
+    """)
 
-    # for msw_obj in msw_backup.msw_obj_list:
-    #     print(msw_obj.progress.login)
+    parser = MyArgumentParser(description=msg, formatter_class=RawTextHelpFormatter)
+
+    # 直接指定とファイル指定は同時に使えない
+    # 現時点では直接指定のみ
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-t', '--target', help='ipaddr or hostname\ne.g.) forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd')
+    # group.add_argument('-f', '--file', help='target csv file\ne.g.) forti_config_backup -f target.csv\ncsv fromat sample)\n172.16.201.201,admin.P@ssword\n172.16.201.202,nwadmin,MyP@ssW0rd')
+
+    # 直接指定の場合、-t, -u, -pは必須
+    target_group = parser.add_argument_group('Target Mode', '-t 指定時に必要な引数')
+    target_group.add_argument('-u', '--user', help='login user name')
+    target_group.add_argument('-p', '--password', help='login password')
+    target_group.add_argument('-n', '--name', default='', help='[optional]logfile name, e.g.) log file prefix instead of hostname')
+    target_group.add_argument('--msw_user', default='admin', help='[optional]msw user, default is admin')
+    target_group.add_argument('--msw_password', help='[optional]msw password, default is same as parent FortiGate')
 
 
+    # ログ出力ディレクトリ指定
+    parser.add_argument('-d', '--directory', default='./fg_config', help='backup directory path default is ./fg_config')
+
+    # パスワードマスク
+    parser.add_argument('--nomask', help='[optional]No Password Mask, default is True', action='store_true')
+
+    args = parser.parse_args()
+
+    # 引数チェック
+    if args.target and (not args.user or not args.password):
+        parser.error("--u and -p are required when -t is specified.")
+
+    if args.target:
+        target_info = {
+            'fgt_addr': args.target,
+            'fgt_user': args.user,
+            'fgt_password': args.password,
+            'alias': args.name,
+            'backup_dir': args.directory,
+            'msw_user': args.msw_user,
+            'msw_password': args.msw_password or args.password,
+        }
+
+    mswbak = MswBackup()
+
+    # バックアップディレクトリ
+    if args.directory:
+        mswbak.backup_dir = args.directory
+
+    # パスワードマスク    
+    mswbak.nomask = args.nomask
+
+    mswbak = MswBackup()
+    let = mswbak.setup(**target_info)
+    let = mswbak.gen_msw_obj_list()
+
+    mswbak.tui_run()
