@@ -2,6 +2,7 @@ from booyaa.ftnt.fgt.model.fgt_info import FgtInfo
 from booyaa.ftnt.fgt.api.cmdb import Cmdb
 from booyaa.ftnt.fgt.api.monitor import Monitor
 from booyaa.ftnt.fgt.api.get_node_info import get_node_info
+from booyaa.common.export.save_file import save_config, save_debug_report
 
 from httpx import Client
 from httpx import TimeoutException, ConnectTimeout, ConnectError, RequestError, HTTPStatusError
@@ -43,7 +44,7 @@ class FgtApi():
         let['msg'] = f'read config.ini self.timeout: {self.timeout}'
         return let
 
-    def set_target(self, fgt_addr, fgt_user, fgt_password, fgt_alias='', fgt_hostname='', fgt_ssh_port=22, fgt_https_port=443, timeout=None):
+    def set_target(self, fgt_addr, fgt_user, fgt_password, fgt_alias='', fgt_hostname='', fgt_ssh_port=22, fgt_https_port=443, timeout=None, export_dir=None):
         let = {'code': 0, 'msg': '', 'output': ''}
         self.fgt_info.addr = fgt_addr
         self.fgt_info.user = fgt_user
@@ -53,6 +54,7 @@ class FgtApi():
         self.fgt_info.ssh_port = fgt_ssh_port
         self.fgt_info.https_port = fgt_https_port
         self.timeout = timeout or self.timeout
+        self.fgt_info.export_dir = Path(export_dir or self.fgt_info.export_dir)
 
         let['msg'] = f'Set to {self.fgt_info.addr}, user: {self.fgt_info.user}'
 
@@ -220,3 +222,41 @@ class FgtApi():
         else:
             decode_content = content
         return decode_content
+
+    def export_backup(self, export_dir=None):
+        # バックアップ取得
+        let = self.monitor.system_config_backup.get()
+
+        if let['code'] != 0:
+            return let
+
+        # ファイルへエクスポート
+        let = save_config(
+            content=let['output'],
+            hostname=self.fgt_info.hostname,
+            alias=self.fgt_info.alias,
+            version=self.fgt_info.version,
+            export_dir=Path(export_dir or self.fgt_info.export_dir),
+            format='bin',
+        )
+
+        return let
+
+    def export_debug_report(self, export_dir=None):
+        # デバッグレポート取得
+        let = self.monitor.system_debug_download.get()
+
+        if let['code'] != 0:
+            return let
+
+        # ファイルへエクスポート
+        let = save_debug_report(
+            content=let['output'],
+            hostname=self.fgt_info.hostname,
+            alias=self.fgt_info.alias,
+            version=self.fgt_info.version,
+            export_dir=Path(export_dir or self.fgt_info.export_dir),
+        )
+
+        return let
+

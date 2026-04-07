@@ -58,6 +58,7 @@ class SystemStatus:
         # HAモードとHA roleの抽出
         _ha_mode = search(r'Current HA mode: *(\S+)(?:, *(\S+))', res['output'])
 
+
         if _ha_mode:
             if _ha_mode.group(1) == 'a-a':
                 self.ha_mode = 'Active-Active'
@@ -65,11 +66,11 @@ class SystemStatus:
                 self.ha_mode = 'Active-Passive'
             else:
                 self.ha_mode = 'Standalone'
-                self.ha_role = _ha_mode.group(2) if _ha_mode.lastindex >= 2 else ''
+
+            self.ha_role = _ha_mode.group(2) if _ha_mode.lastindex >= 2 else ''
+
         else:
             self.ha_mode = 'Standalone'
             self.ha_role = ''
-
-
 
         return res

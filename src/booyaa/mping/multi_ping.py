@@ -244,7 +244,7 @@ class MultiPing:
                     sleep(self.interval - rtt)
 
     def log_ping_result(self, ping_dict):
-        log_file = Path(self.res_dir, f"{self.my_hostname}_{ping_dict['dst']}_log.csv")
+        log_file = Path(self.res_dir, f"{self.my_hostname}_{ping_dict['src']}_{ping_dict['dst']}_log.csv")
 
         try:
             # 新規作成時はヘッダを書き込む
@@ -271,7 +271,7 @@ class MultiPing:
 
     def update_ping_table(self) -> Table:
         table = Table()
-        table.title = 'Stop: Ctrl + C'
+        table.title = f'{self.res_dir.resolve()}\nStop: Ctrl + C'
         table.add_column('Destination')
         table.add_column('OK/NG')
         table.add_column('RTT')

@@ -1,0 +1,225 @@
+"""
+TCP Traffic Test Client
+=======================
+Usage:
+    python client.py <host> <port> [options]
+
+Options:
+    --timeout SEC     Connection/idle timeout in seconds (default: 30)
+    --interval SEC    Stats log interval in seconds (default: 1)
+    --duration SEC    Run duration in seconds, 0=unlimited (default: 0)
+    --blocksize N     Send block size in bytes (default: 65536)
+    --mode MODE       download | upload | both (default: download)
+    --logdir DIR      Log directory (default: ./log_traffic)
+"""
+
+from __future__ import annotations
+
+import argparse
+import signal
+import socket
+import sys
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from common.dummy import DummyReader
+from common.ip_utils import get_source_ip, resolve_host, tcp_no_delay
+from common.logger import (
+    EVENT_CONNECT, EVENT_DATA, EVENT_DISCONNECT, EVENT_ERROR, EVENT_TIMEOUT,
+    TrafficLogger,
+)
+from common.stats import StatsTracker
+
+PROTO = "TCP"
+
+
+def run_client(args: argparse.Namespace) -> None:
+    server_ip = resolve_host(args.host)
+    server_port: int = args.port
+    client_ip = get_source_ip(server_ip, server_port)
+
+    # Create socket and connect
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(args.timeout_sec)
+    tcp_no_delay(sock)
+
+    connect_time = datetime.now()
+    try:
+        sock.connect((server_ip, server_port))
+    except (TimeoutError, OSError) as e:
+        print(f"[TCP Client] Connection failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    client_port = sock.getsockname()[1]
+
+    logger = TrafficLogger(
+        logdir=args.logdir,
+        proto=PROTO,
+        server_ip=server_ip,
+        server_port=server_port,
+        client_ip=client_ip,
+        client_port=client_port,
+        connect_time=connect_time,
+    )
+    stats = StatsTracker()
+    stop_event = threading.Event()
+
+    logger.log(EVENT_CONNECT, message=f"Connected to {server_ip}:{server_port}")
+
+    # Duration deadline
+    deadline: float | None = None
+    if args.duration > 0:
+        deadline = time.monotonic() + args.duration
+
+    def _shutdown(sig=None, frame=None):
+        stop_event.set()
+
+    signal.signal(signal.SIGINT, _shutdown)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, _shutdown)
+
+    # Stats reporter thread
+    def _report_loop():
+        while not stop_event.wait(timeout=args.interval):
+            snap = stats.snapshot()
+            logger.log(
+                EVENT_DATA,
+                elapsed_sec=snap.elapsed_sec,
+                bytes_sent=snap.total_bytes_sent,
+                bytes_recv=snap.total_bytes_recv,
+                bps_sent=snap.bps_sent,
+                bps_recv=snap.bps_recv,
+                message=f"interval {args.interval}s",
+            )
+
+    reporter = threading.Thread(target=_report_loop, daemon=True)
+    reporter.start()
+
+    event_type = EVENT_DISCONNECT
+    error_msg = ""
+
+    try:
+        mode = args.mode
+
+        if mode == "download":
+            _recv_loop(sock, args.blocksize, stats, stop_event, deadline)
+        elif mode == "upload":
+            _send_loop(sock, args.blocksize, stats, stop_event, deadline)
+        else:  # both
+            t_send = threading.Thread(
+                target=_send_loop, args=(sock, args.blocksize, stats, stop_event, deadline), daemon=True
+            )
+            t_recv = threading.Thread(
+                target=_recv_loop, args=(sock, args.blocksize, stats, stop_event, deadline), daemon=True
+            )
+            t_send.start()
+            t_recv.start()
+            t_send.join()
+            t_recv.join()
+
+    except TimeoutError:
+        event_type = EVENT_TIMEOUT
+        error_msg = "Connection timed out"
+    except (ConnectionResetError, BrokenPipeError, OSError) as e:
+        event_type = EVENT_ERROR
+        error_msg = str(e)
+    finally:
+        stop_event.set()
+        reporter.join(timeout=args.interval + 1)
+        sock.close()
+
+        elapsed = stats.elapsed()
+        sent, recv = stats.totals()
+        logger.log(
+            event_type,
+            elapsed_sec=elapsed,
+            bytes_sent=sent,
+            bytes_recv=recv,
+            message=error_msg or "Session ended",
+        )
+        logger.close()
+
+
+def _send_loop(
+    sock: socket.socket,
+    blocksize: int,
+    stats: StatsTracker,
+    stop: threading.Event,
+    deadline: float | None,
+) -> None:
+    """Upload dummy data to server."""
+    reader = DummyReader(blocksize)
+    while not stop.is_set():
+        if deadline and time.monotonic() >= deadline:
+            stop.set()
+            break
+        chunk = reader.read()
+        try:
+            sock.sendall(chunk)
+        except OSError:
+            break
+        stats.add_sent(len(chunk))
+
+
+def _recv_loop(
+    sock: socket.socket,
+    blocksize: int,
+    stats: StatsTracker,
+    stop: threading.Event,
+    deadline: float | None,
+) -> None:
+    """Receive and discard data from server."""
+    while not stop.is_set():
+        if deadline and time.monotonic() >= deadline:
+            stop.set()
+            break
+        try:
+            data = sock.recv(blocksize)
+        except OSError:
+            break
+        if not data:
+            break
+        stats.add_recv(len(data))
+
+
+# ------------------------------------------------------------------
+# Entry point
+# ------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="TCP Traffic Test Client",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p.add_argument("host", help="Server hostname or IP address")
+    p.add_argument("port", type=int, help="Server port")
+    p.add_argument("--timeout", type=float, default=30.0, dest="timeout_sec",
+                   help="Connection/idle timeout (seconds)")
+    p.add_argument("--interval", type=float, default=1.0,
+                   help="Stats log interval (seconds)")
+    p.add_argument("--duration", type=float, default=0.0,
+                   help="Run duration (seconds, 0=unlimited)")
+    p.add_argument("--blocksize", type=int, default=65536,
+                   help="Send/recv block size (bytes)")
+    p.add_argument("--mode", choices=["download", "upload", "both"], default="download",
+                   help="Transfer direction (client perspective)")
+    p.add_argument("--logdir", type=Path, default=Path("./log_traffic"),
+                   help="Log output directory")
+    return p.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    print(f"[TCP Client] Connecting to {args.host}:{args.port}  mode={args.mode}  "
+          f"duration={args.duration}s  interval={args.interval}s  blocksize={args.blocksize}B")
+    print("[TCP Client] Press Ctrl+C to stop.")
+    run_client(args)
+    print("[TCP Client] Done.")
+
+
+if __name__ == "__main__":
+    main()

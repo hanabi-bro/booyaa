@@ -12,7 +12,7 @@ class SystemHaStatus:
         self.exsist_secondary = False
         self.secondary_hostname = ''         # セカンダリノードのホスト名
         self.secondary_serial = ''           # セカンダリノードのシリアル
-
+        self.secondary_cluster_index = ''
 
     def get(self):
         cmd = 'get system ha status | grep .*'
@@ -22,37 +22,34 @@ class SystemHaStatus:
             if let['code'] != 0:
                 return let
 
-        res = self.cli.execute_command(cmd)
+        let = self.cli.execute_command(cmd)
 
         # コマンド実行エラー時は終了
-        if res['code'] != 0:
+        if let['code'] != 0:
             return let
 
         # globalモードを終了
         if self.cli.fgt_info.vdom_mode == 'multi-vdom':
-            res = self.cli.end_global()
-            if res['code'] != 0:
+            let = self.cli.end_global()
+            if let['code'] != 0:
                 return let
 
-        _ha_cluster_match = findall(r'(\S+) *, *(\w+), *(HA)? cluster index *= *(\d+)', res['output'])
+        # HA index取得
+        _ha_cluster_match = findall(r'\n(Primary|Secondary) *: (\S+| \s+) *, (\S+), HA cluster index = (\d+)', let['output'])
+        for _ha in _ha_cluster_match:
+            if _ha[0] == 'Primary':
+                self.primary_hostname = _ha[1].strip()
+                self.primary_serial = _ha[2].strip()
+                self.primary_cluster_index = _ha[3].strip()
+            elif _ha[0] == 'Secondary':
+                self.secondary_hostname = _ha[1].strip()
+                self.secondary_serial = _ha[2].strip()
+                self.secondary_cluster_index = _ha[3].strip()
+
+                if self.secondary_hostname and self.secondary_serial and self.secondary_cluster_index:
+                    self.secondary_exist = True
+
         self.exsist_secondary = len(_ha_cluster_match) == 2 or False
-        if _ha_cluster_match[0][0] == self.cli.fgt_info.hostname:
-            _primary_cluster_info = _ha_cluster_match[0]
-            if self.exsist_secondary:
-                _secondary_cluster_info = _ha_cluster_match[1]
-        else:
-            _primary_cluster_info = _ha_cluster_match[1]
-            if self.exsist_secondary:
-                _secondary_cluster_info = _ha_cluster_match[0]
-
-        self.cluster_index = _primary_cluster_info[2]
-        if self.exsist_secondary:
-            self.secondary_hostname = _secondary_cluster_info[0]
-            self.secondary_serial = _secondary_cluster_info[1]
-            self.secondary_cluster_index = _secondary_cluster_info[2]
-
-        let = res
-
 
         return let
 

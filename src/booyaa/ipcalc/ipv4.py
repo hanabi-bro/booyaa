@@ -197,21 +197,21 @@ class IPv4:
             'args_ip': self.args_ip_str,
             'ip_version': self.ip_version,
             'ip': self.ip,
-            'ip_long': self.ip_long,
-            'ip_hex': self.ip_hex,
             'cidr': self.cidr,
             'netmask': self.netmask,
             'nwaddr': self.nwaddr,
             'bcaddr': self.bcaddr,
-            'nwaddr_long': self.nwaddr_long,
-            'bcaddr_long': self.bcaddr_long,
-            'nwaddr_hex': self.nwaddr_hex,
-            'bcaddr_hex': self.bcaddr_hex,
             'host_min_addr': self.host_min_addr,
             'host_max_addr': self.host_max_addr,
             'num_of_hosts': self.num_of_hosts,
             'ip_class': self.ip_class,
-            'scope': self.scope
+            'scope': self.scope,
+            'ip_long': self.ip_long,
+            'nwaddr_long': self.nwaddr_long,
+            'bcaddr_long': self.bcaddr_long,
+            'ip_hex': self.ip_hex,
+            'nwaddr_hex': self.nwaddr_hex,
+            'bcaddr_hex': self.bcaddr_hex,
         }
 
 

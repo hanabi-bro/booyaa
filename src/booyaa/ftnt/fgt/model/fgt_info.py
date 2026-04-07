@@ -1,4 +1,6 @@
 from dataclasses import dataclass, field
+from pathlib import Path
+
 
 @dataclass
 class FgtInfo:
@@ -35,19 +37,6 @@ class FgtInfo:
     secondary_ha_role: str = ''
 
     msw_list: list = field(default_factory=list)
+    export_dir: Path = field(default=Path('./export_fgt'))
 
-    node_info_flg = False
-
-    def set_target(self, fgt_addr, fgt_user, fgt_password, fgt_alias='', fgt_hostname='', fgt_ssh_port=22, fgt_https_port=443, timeout=None):
-        let = {'code': 0, 'msg': '', 'output': ''}
-        addr = fgt_addr
-        user = fgt_user
-        password = fgt_password
-        alias = fgt_alias
-        hostname = fgt_hostname
-        ssh_port = fgt_ssh_port
-        https_port = fgt_https_port
-
-        let['msg'] = f'CLI Set to {addr}, user: {user}'
-
-        return let
+    node_info_flg: bool = False

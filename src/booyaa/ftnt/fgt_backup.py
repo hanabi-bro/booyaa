@@ -4,7 +4,7 @@ from pathlib import Path
 from time import sleep
 import csv
 
-from booyaa.ftnt.fgt.backup import FgtBackup
+from booyaa.ftnt.fgt._old_backup import FgtBackup
 
 class CuiFgtBackup(FgtBackup):
     def __init__(self):

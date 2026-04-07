@@ -11,10 +11,8 @@ from booyaa.ftnt.msw.model.progress import Progress
 from concurrent.futures import ThreadPoolExecutor
 from booyaa.common.fire_and_forget import fire_and_forget
 
-
 from pathlib import Path
 from time import sleep
-
 
 from signal import signal, SIGINT
 from traceback import format_exc
