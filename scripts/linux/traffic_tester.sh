@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +o histexpand
 
 PYTHON="$HOME/.local/booyaa/.venv/bin/python"
 
@@ -54,3 +55,5 @@ case "$mode" in
 esac
 
 exec "$PYTHON" -m "$module" "$@"
+
+trap cleanup EXIT
