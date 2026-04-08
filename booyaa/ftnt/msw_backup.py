@@ -227,13 +227,13 @@ if __name__ == '__main__':
     msg = dedent("""\
     ~~~ Forti MangedSwitch Config Backup ~~~
     ## CLI usage
-    `msw_bak -t <fgt_addr> -u <fgt_user> -p <fgt_password>`
-    `msw_bak -t <fgt_addr> -u <fgt_user> -p <fgt_password>` --msw_user <msw_user> --msw_password <msw_password>
+    `msw_backup -t <fgt_addr> -u <fgt_user> -p <fgt_password>`
+    `msw_backup -t <fgt_addr> -u <fgt_user> -p <fgt_password>` --msw_user <msw_user> --msw_password <msw_password>
 
     e.g:
     ```
-    fgt_bak -t 172.16.201.201 -u admin -p password
-    fgt_bak -t 172.16.201.201 -u mswadmin -p mswpassword
+    msw_backup -t 172.16.201.201 -u admin -p password
+    msw_backup -t 172.16.201.201 -u admin -p password --msw_user mswadmin --msw_password mswpassword
     ```
     """)
 
@@ -242,8 +242,8 @@ if __name__ == '__main__':
     # 直接指定とファイル指定は同時に使えない
     # 現時点では直接指定のみ
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-t', '--target', help='ipaddr or hostname\ne.g.) forti_config_backup -t 172.16.201.201 -u admin -p P@ssw0rd')
-    # group.add_argument('-f', '--file', help='target csv file\ne.g.) forti_config_backup -f target.csv\ncsv fromat sample)\n172.16.201.201,admin.P@ssword\n172.16.201.202,nwadmin,MyP@ssW0rd')
+    group.add_argument('-t', '--target', help='ipaddr or hostname\ne.g.) msw_backup -t 172.16.201.201 -u admin -p P@ssw0rd')
+    # group.add_argument('-f', '--file', help='target csv file\ne.g.) msw_backup -f target.csv\ncsv fromat sample)\n172.16.201.201,admin.P@ssword\n172.16.201.202,nwadmin,MyP@ssW0rd')
 
     # 直接指定の場合、-t, -u, -pは必須
     target_group = parser.add_argument_group('Target Mode', '-t 指定時に必要な引数')
