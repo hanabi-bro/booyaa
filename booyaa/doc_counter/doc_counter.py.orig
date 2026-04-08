@@ -1,0 +1,126 @@
+from pathlib import Path
+from openpyxl import load_workbook
+import zipfile
+import xml.etree.ElementTree as ET
+from pptx import Presentation
+
+def count_visible_sheets(root_dir: str):
+    root = Path(root_dir)
+
+    def iter_files_exclude_dirs(_root, pattern, exclude_names):
+        for p in _root.rglob(pattern):
+            if any(
+                parent.name in exclude_names or 
+                parent.name.lower().startswith(tuple(exclude_names))
+                for parent in p.parents
+            ):
+                continue
+
+            print(p)
+            yield p
+
+    exclude = {"old", "_old", ".old", "backup", "tmp"}
+    # for f in iter_files_exclude_dirs(root, "*.xlsx", exclude):
+    #     print(f)
+    
+    excel_files = [f for f in iter_files_exclude_dirs(root, "*.xlsx", exclude)]
+
+#    excel_files = list(root.rglob("*.xlsx"))
+    total_files = len(excel_files)
+    total_sheets = 0
+
+    details = []
+
+    for file in excel_files:
+        try:
+            wb = load_workbook(file, read_only=True)
+
+            # sheet_state == 'visible' だけを数える
+            visible_sheets = [
+                name for name in wb.sheetnames
+                if wb[name].sheet_state == "visible"
+            ]
+
+            sheet_count = len(visible_sheets)
+            total_sheets += sheet_count
+
+            details.append((str(file), sheet_count, visible_sheets))
+
+        except Exception as e:
+            details.append((str(file), f"Error: {e}", []))
+
+    return {
+        "total_files": total_files,
+        "total_sheets": total_sheets,
+        "details": details,  # (ファイル, 見えてる数, 見えてるシート名)
+    }
+
+def get_docx_page_count(docx_path):
+    try:
+        with zipfile.ZipFile(docx_path) as z:
+            with z.open("docProps/app.xml") as f:
+                tree = ET.parse(f)
+                root = tree.getroot()
+                ns = {"d": "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"}
+
+                pages = root.find("d:Pages", ns)
+                if pages is not None:
+                    return int(pages.text)
+                return None
+    except Exception as e:
+        return None
+
+
+def get_pptx_slide_count(ppt_path):
+    try:
+        prs = Presentation(ppt_path)
+        return len(prs.slides)
+    except Exception as e:
+        return None
+
+def count_word_powerpoint(root_dir):
+    root = Path(root_dir)
+
+    docx_files = list(root.rglob("*.docx"))
+    pptx_files = list(root.rglob("*.pptx"))
+
+    result = {
+        "word_files": len(docx_files),
+        "ppt_files": len(pptx_files),
+        "total_word_pages": 0,
+        "total_ppt_slides": 0,
+        "details": []
+    }
+
+    # Word
+    for f in docx_files:
+        pages = get_docx_page_count(f)
+        result["total_word_pages"] += pages if pages else 0
+        result["details"].append((str(f), "word", pages))
+
+    # PowerPoint
+    for f in pptx_files:
+        slides = get_pptx_slide_count(f)
+        result["total_ppt_slides"] += slides if slides else 0
+        result["details"].append((str(f), "ppt", slides))
+
+    return result
+
+
+if __name__ == '__main__':
+    import argparse    # 1. argparseをインポート
+
+    parser = argparse.ArgumentParser(description='document num culc')
+    parser.add_argument('dir', help='dir', default='.')
+
+    args = parser.parse_args()
+
+    res = count_visible_sheets(args.dir)
+
+    print(res['total_files'])
+    print(res['total_sheets'])
+
+
+    res = count_word_powerpoint(args.dir)
+
+    print(res)
