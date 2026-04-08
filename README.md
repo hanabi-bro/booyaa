@@ -164,7 +164,7 @@ ln -fs $app_dir/$app_exe $bin_dir/$app_name
 ```bash
 bin_dir="$HOME/.local/bin"
 app_dir="$HOME/.local/booyaa/scripts/linux"
-app_name="ipcalc"
+app_name="mping"
 app_exe="$app_name.sh"
 
 ln -fs $app_dir/$app_exe $bin_dir/$app_name
