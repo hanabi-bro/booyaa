@@ -286,6 +286,8 @@ def parse_args() -> argparse.Namespace:
                    help="PEM private key file path (auto-generated if omitted)")
     p.add_argument("--logdir", type=Path, default=Path("./log_traffic"),
                    help="Log output directory")
+    p.add_argument("--mode", choices=["download", "upload", "both"], default="download",
+                   help="Transfer direction: download=server sends to client, upload=server receives")
     p.add_argument("--threshold", type=int, default=1000,
                    help="Data transfer rate threshold for warnings (bytes/sec)")
     return p.parse_args()
