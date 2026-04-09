@@ -66,15 +66,16 @@ class RichTrafficOutput:
         elif event_type == "DATA":
             # Check transfer rates based on mode
             mode = row.get("mode", "").lower()
+            
             if mode == "download":
-                # Download mode: server sends to client, check send rate
-                if bps_sent < self.threshold:
+                # Download mode: client receives data, check receive rate
+                if bps_recv < self.threshold:
                     base_style = self.style_warning
                 else:
                     base_style = self.style_normal
             elif mode == "upload":
-                # Upload mode: server receives from client, check receive rate
-                if bps_recv < self.threshold:
+                # Upload mode: client sends data, check send rate
+                if bps_sent < self.threshold:
                     base_style = self.style_warning
                 else:
                     base_style = self.style_normal
