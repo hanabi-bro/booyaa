@@ -64,7 +64,7 @@ class TCPClientHandler(socketserver.BaseRequestHandler):
         # finish() checks this to avoid writing a duplicate DISCONNECT.
         self._terminal_logged = False
 
-        self.logger.log(EVENT_CONNECT, message=f"Client connected from {client_ip}:{client_port}")
+        self.logger.log(EVENT_CONNECT, message=f"Client connected from {client_ip}:{client_port}", mode=self.server.mode)
 
     def handle(self) -> None:
         sock = self.request
@@ -100,7 +100,7 @@ class TCPClientHandler(socketserver.BaseRequestHandler):
             sent, recv = self.stats.totals()
             self.logger.log(EVENT_TIMEOUT, elapsed_sec=elapsed,
                             bytes_sent=sent, bytes_recv=recv,
-                            message="Connection timed out")
+                            message="Connection timed out", mode=self.server.mode)
             self._terminal_logged = True
 
         except (ConnectionResetError, BrokenPipeError) as e:
@@ -108,7 +108,7 @@ class TCPClientHandler(socketserver.BaseRequestHandler):
             sent, recv = self.stats.totals()
             self.logger.log(EVENT_DISCONNECT, elapsed_sec=elapsed,
                             bytes_sent=sent, bytes_recv=recv,
-                            message=f"Client disconnected ({e})")
+                            message=f"Client disconnected ({e})", mode=self.server.mode)
             self._terminal_logged = True
 
         except OSError as e:
@@ -116,7 +116,7 @@ class TCPClientHandler(socketserver.BaseRequestHandler):
             sent, recv = self.stats.totals()
             self.logger.log(EVENT_ERROR, elapsed_sec=elapsed,
                             bytes_sent=sent, bytes_recv=recv,
-                            message=str(e))
+                            message=str(e), mode=self.server.mode)
             self._terminal_logged = True
 
         finally:
@@ -130,7 +130,7 @@ class TCPClientHandler(socketserver.BaseRequestHandler):
         if not self._terminal_logged:
             self.logger.log(EVENT_DISCONNECT, elapsed_sec=elapsed,
                             bytes_sent=sent, bytes_recv=recv,
-                            message="Connection closed")
+                            message="Connection closed", mode=self.server.mode)
         self.logger.close()
 
     # ------------------------------------------------------------------
