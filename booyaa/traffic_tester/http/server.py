@@ -88,7 +88,7 @@ class TrafficHTTPHandler(http.server.BaseHTTPRequestHandler):
         interval: float = _config["interval"]
         timeout: float = _config["timeout_sec"]
 
-        logger.log(EVENT_CONNECT, message=f"GET {self.path} from {self.client_address[0]}")
+        logger.log(EVENT_CONNECT, message=f"GET {self.path} from {self.client_address[0]}", mode=_config["mode"])
 
         # Send headers
         self.send_response(200)
@@ -134,7 +134,7 @@ class TrafficHTTPHandler(http.server.BaseHTTPRequestHandler):
             elapsed = stats.elapsed()
             sent, recv = stats.totals()
             logger.log(event_type, elapsed_sec=elapsed,
-                       bytes_sent=sent, bytes_recv=recv, message=msg)
+                       bytes_sent=sent, bytes_recv=recv, message=msg, mode=_config["mode"])
             logger.close()
 
     # ------------------------------------------------------------------
@@ -153,7 +153,7 @@ class TrafficHTTPHandler(http.server.BaseHTTPRequestHandler):
         interval: float = _config["interval"]
         timeout: float = _config["timeout_sec"]
 
-        logger.log(EVENT_CONNECT, message=f"POST {self.path} from {self.client_address[0]}")
+        logger.log(EVENT_CONNECT, message=f"POST {self.path} from {self.client_address[0]}", mode=_config["mode"])
 
         # Stats reporter
         reporter = threading.Thread(target=self._report_loop,
@@ -209,7 +209,7 @@ class TrafficHTTPHandler(http.server.BaseHTTPRequestHandler):
             elapsed = stats.elapsed()
             sent, recv = stats.totals()
             logger.log(event_type, elapsed_sec=elapsed,
-                       bytes_sent=sent, bytes_recv=recv, message=msg)
+                       bytes_sent=sent, bytes_recv=recv, message=msg, mode=_config["mode"])
             logger.close()
 
     # ------------------------------------------------------------------
@@ -254,6 +254,7 @@ class TrafficHTTPHandler(http.server.BaseHTTPRequestHandler):
                 bps_sent=snap.bps_sent,
                 bps_recv=snap.bps_recv,
                 message=f"interval {interval}s",
+                mode=_config["mode"],
             )
 
 
@@ -294,6 +295,8 @@ def parse_args() -> argparse.Namespace:
                    help="Send/recv block size (bytes)")
     p.add_argument("--logdir", type=Path, default=Path("./log_traffic"),
                    help="Log output directory")
+    p.add_argument("--mode", choices=["download", "upload", "both"], default="download",
+                   help="Transfer direction: download=server sends to client, upload=server receives")
     p.add_argument("--threshold", type=int, default=1000,
                    help="Data transfer rate threshold for warnings (bytes/sec)")
     return p.parse_args()
@@ -311,6 +314,7 @@ def main() -> None:
         "timeout_sec": args.timeout_sec,
         "interval": args.interval,
         "blocksize": args.blocksize,
+        "mode": args.mode,
         "rich_output": rich_output,
     })
 

@@ -183,7 +183,7 @@ def run_download(
         if not connect_logged.is_set():
             verify_str = "on" if args.verify else "off (self-signed OK)"
             logger.log(EVENT_CONNECT,
-                       message=f"Connected to {server_ip}:{server_port} mode={args.mode} verify={verify_str}")
+                       message=f"Connected to {server_ip}:{server_port} mode={args.mode} verify={verify_str}", mode=args.mode)
             connect_logged.set()
 
         blocksize = args.blocksize
@@ -259,7 +259,7 @@ def run_upload(
         if not connect_logged.is_set():
             verify_str = "on" if args.verify else "off (self-signed OK)"
             logger.log(EVENT_CONNECT,
-                       message=f"Connected to {server_ip}:{server_port} mode={args.mode} verify={verify_str}")
+                       message=f"Connected to {server_ip}:{server_port} mode={args.mode} verify={verify_str}", mode=args.mode)
             connect_logged.set()
 
         while not stop_event.is_set():
@@ -342,6 +342,7 @@ def run_client(args: argparse.Namespace) -> None:
                 bps_sent=snap.bps_sent,
                 bps_recv=snap.bps_recv,
                 message=f"interval {args.interval}s",
+                mode=args.mode,
             )
 
     reporter = threading.Thread(target=_report_loop, daemon=True)
@@ -394,7 +395,7 @@ def run_client(args: argparse.Namespace) -> None:
         elapsed = stats.elapsed()
         sent, recv = stats.totals()
         logger.log(event_type, elapsed_sec=elapsed, bytes_sent=sent,
-                   bytes_recv=recv, message=msg)
+                   bytes_recv=recv, message=msg, mode=args.mode)
         logger.close()
 
 

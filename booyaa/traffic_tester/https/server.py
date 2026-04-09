@@ -88,7 +88,7 @@ class TrafficHTTPSHandler(http.server.BaseHTTPRequestHandler):
         interval: float = _config["interval"]
         timeout: float = _config["timeout_sec"]
 
-        logger.log(EVENT_CONNECT, message=f"GET {self.path} from {self.client_address[0]}")
+        logger.log(EVENT_CONNECT, message=f"GET {self.path} from {self.client_address[0]}", mode=_config["mode"])
 
         self.send_response(200)
         self.send_header("Content-Type", "application/octet-stream")
@@ -139,7 +139,7 @@ class TrafficHTTPSHandler(http.server.BaseHTTPRequestHandler):
             elapsed = stats.elapsed()
             sent, recv = stats.totals()
             logger.log(event_type, elapsed_sec=elapsed,
-                       bytes_sent=sent, bytes_recv=recv, message=msg)
+                       bytes_sent=sent, bytes_recv=recv, message=msg, mode=_config["mode"])
             logger.close()
 
     def do_POST(self) -> None:
@@ -154,7 +154,7 @@ class TrafficHTTPSHandler(http.server.BaseHTTPRequestHandler):
         interval: float = _config["interval"]
         timeout: float = _config["timeout_sec"]
 
-        logger.log(EVENT_CONNECT, message=f"POST {self.path} from {self.client_address[0]}")
+        logger.log(EVENT_CONNECT, message=f"POST {self.path} from {self.client_address[0]}", mode=_config["mode"])
 
         reporter = threading.Thread(
             target=self._report_loop,
@@ -215,7 +215,7 @@ class TrafficHTTPSHandler(http.server.BaseHTTPRequestHandler):
             elapsed = stats.elapsed()
             sent, recv = stats.totals()
             logger.log(event_type, elapsed_sec=elapsed,
-                       bytes_sent=sent, bytes_recv=recv, message=msg)
+                       bytes_sent=sent, bytes_recv=recv, message=msg, mode=_config["mode"])
             logger.close()
 
     def _read_chunked(self, stats: StatsTracker, blocksize: int, stop: threading.Event) -> None:
@@ -252,6 +252,7 @@ class TrafficHTTPSHandler(http.server.BaseHTTPRequestHandler):
                 bps_sent=snap.bps_sent,
                 bps_recv=snap.bps_recv,
                 message=f"interval {interval}s",
+                mode=_config["mode"],
             )
 
 
