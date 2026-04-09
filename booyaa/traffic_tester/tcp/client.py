@@ -228,6 +228,7 @@ def run_client(args: argparse.Namespace) -> None:
                 bps_sent=snap.bps_sent,
                 bps_recv=snap.bps_recv,
                 message=f"interval {args.interval}s",
+                mode=args.mode,
             )
 
     reporter = threading.Thread(target=_report_loop, daemon=True)
@@ -274,6 +275,7 @@ def run_client(args: argparse.Namespace) -> None:
             bytes_sent=sent,
             bytes_recv=recv,
             message=error_msg or "Session ended",
+            mode=args.mode,
         )
         logger.close()
 

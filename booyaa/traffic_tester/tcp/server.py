@@ -168,6 +168,7 @@ class TCPClientHandler(socketserver.BaseRequestHandler):
                 bps_sent=snap.bps_sent,
                 bps_recv=snap.bps_recv,
                 message=f"interval {interval}s",
+                mode=self.server.mode,
             )
 
 

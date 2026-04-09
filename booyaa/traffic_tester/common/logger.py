@@ -28,6 +28,7 @@ CSV_FIELDS = [
     "pkt_seq",
     "pkt_loss",
     "pkt_ooo",
+    "mode",
 ]
 
 # Event types
@@ -130,6 +131,7 @@ class TrafficLogger:
         pkt_seq: int|str = "",
         pkt_loss: int|str = "",
         pkt_ooo: int|str = "",
+        mode: str = "",
     ) -> None:
         """Write one CSV row to file and stdout."""
         row = {
@@ -149,6 +151,7 @@ class TrafficLogger:
             "pkt_seq":     pkt_seq,
             "pkt_loss":    pkt_loss,
             "pkt_ooo":     pkt_ooo,
+            "mode":        mode,
         }
         self._writer.writerow(row)
         self._file.flush()
