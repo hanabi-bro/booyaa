@@ -64,21 +64,38 @@ class RichTrafficOutput:
         elif event_type == "DISCONNECT":
             base_style = self.style_disconnect
         elif event_type == "DATA":
-            # Check transfer rates based on mode
+            # Check transfer rates based on mode and role
             mode = row.get("mode", "").lower()
+            role = row.get("role", "").lower()
             
             if mode == "download":
-                # Download mode: client receives data, check receive rate
-                if bps_recv < self.threshold:
-                    base_style = self.style_warning
+                # Download mode: server sends, client receives
+                if role == "client":
+                    # Client: check receive rate
+                    if bps_recv < self.threshold:
+                        base_style = self.style_warning
+                    else:
+                        base_style = self.style_normal
                 else:
-                    base_style = self.style_normal
+                    # Server: check send rate
+                    if bps_sent < self.threshold:
+                        base_style = self.style_warning
+                    else:
+                        base_style = self.style_normal
             elif mode == "upload":
-                # Upload mode: client sends data, check send rate
-                if bps_sent < self.threshold:
-                    base_style = self.style_warning
+                # Upload mode: client sends, server receives
+                if role == "client":
+                    # Client: check send rate
+                    if bps_sent < self.threshold:
+                        base_style = self.style_warning
+                    else:
+                        base_style = self.style_normal
                 else:
-                    base_style = self.style_normal
+                    # Server: check receive rate
+                    if bps_recv < self.threshold:
+                        base_style = self.style_warning
+                    else:
+                        base_style = self.style_normal
             else:
                 # Both mode or unspecified: check both rates
                 if bps_sent < self.threshold or bps_recv < self.threshold:
@@ -93,7 +110,7 @@ class RichTrafficOutput:
         fields = [
             "datetime", "event_type", "proto", "server_ip", "server_port",
             "client_ip", "client_port", "elapsed_sec", "bytes_sent", "bytes_recv",
-            "bps_sent", "bps_recv", "message", "pkt_seq", "pkt_loss", "pkt_ooo", "mode"
+            "bps_sent", "bps_recv", "message", "pkt_seq", "pkt_loss", "pkt_ooo", "mode", "role"
         ]
         
         values = []

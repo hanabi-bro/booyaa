@@ -29,6 +29,7 @@ CSV_FIELDS = [
     "pkt_loss",
     "pkt_ooo",
     "mode",
+    "role",
 ]
 
 # Event types
@@ -152,6 +153,7 @@ class TrafficLogger:
             "pkt_loss":    pkt_loss,
             "pkt_ooo":     pkt_ooo,
             "mode":        mode,
+            "role":        self.role,
         }
         self._writer.writerow(row)
         self._file.flush()
