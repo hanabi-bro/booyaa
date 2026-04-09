@@ -42,6 +42,7 @@ cd ~/.local
 git clone https://github.com/hanabi-bro/booyaa.git
 cd booyaa
 uv sync
+sudo setcap 'cap_net_bind_service=+ep' $(readlink -f .venv/bin/python)
 uv pip install -e .
 ```
 
