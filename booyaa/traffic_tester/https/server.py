@@ -321,6 +321,7 @@ def main() -> None:
         "timeout_sec": args.timeout_sec,
         "interval": args.interval,
         "blocksize": args.blocksize,
+        "mode": args.mode,
         "rich_output": rich_output,
     })
 
