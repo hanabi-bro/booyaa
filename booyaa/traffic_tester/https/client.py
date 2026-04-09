@@ -37,6 +37,7 @@ from common.logger import (
     EVENT_CONNECT, EVENT_DATA, EVENT_DISCONNECT, EVENT_ERROR, EVENT_TIMEOUT,
     TrafficLogger,
 )
+from common.rich_output import RichTrafficOutput
 from common.stats import StatsTracker
 
 PROTO = "HTTPS"
@@ -299,6 +300,9 @@ def run_upload(
 
 
 def run_client(args: argparse.Namespace) -> None:
+    # Initialize rich output handler
+    rich_output = RichTrafficOutput(threshold=args.threshold)
+    
     server_ip = resolve_host(args.host)
     server_port: int = args.port
     client_ip = get_source_ip(server_ip, server_port)
@@ -312,6 +316,7 @@ def run_client(args: argparse.Namespace) -> None:
         client_ip=client_ip,
         client_port=0,
         connect_time=connect_time,
+        rich_output=rich_output,
     )
     stats = StatsTracker()
     stop_event = threading.Event()
@@ -418,18 +423,21 @@ def parse_args() -> argparse.Namespace:
                    help="Enable TLS certificate verification (default: disabled)")
     p.add_argument("--logdir", type=Path, default=Path("./log_traffic"),
                    help="Log output directory")
+    p.add_argument("--threshold", type=int, default=1000,
+                   help="Data transfer rate threshold for warnings (bytes/sec)")
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     verify_str = "on" if args.verify else "off"
-    print(f"[HTTPS Client] Connecting to {args.host}:{args.port}  mode={args.mode}  "
+    rich_output = RichTrafficOutput(threshold=args.threshold)
+    rich_output.print_message(f"[HTTPS Client] Connecting to {args.host}:{args.port}  mode={args.mode}  "
           f"duration={args.duration}s  interval={args.interval}s  blocksize={args.blocksize}B  "
-          f"verify={verify_str}")
-    print("[HTTPS Client] Press Ctrl+C to stop.")
+          f"verify={verify_str}", "INFO")
+    rich_output.print_message("[HTTPS Client] Press Ctrl+C to stop.", "INFO")
     run_client(args)
-    print("[HTTPS Client] Done.")
+    rich_output.print_message("[HTTPS Client] Done.", "INFO")
 
 
 if __name__ == "__main__":
