@@ -100,6 +100,7 @@ class TrafficLogger:
         self.server_port = server_port
         self.client_ip = client_ip
         self.client_port = client_port
+        self.role = role
         self.connect_time = connect_time or datetime.now()
         self.rich_output = rich_output
 
