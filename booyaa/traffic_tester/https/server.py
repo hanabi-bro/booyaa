@@ -335,10 +335,14 @@ def main() -> None:
         server.serve_forever()
     finally:
         # Clean up temp cert files
-        if temp_cert and temp_cert.exists():
-            temp_cert.unlink()
-        if temp_key and temp_key.exists():
-            temp_key.unlink()
+        if temp_cert:
+            temp_cert_path = Path(temp_cert)
+            if temp_cert_path.exists():
+                temp_cert_path.unlink()
+        if temp_key:
+            temp_key_path = Path(temp_key)
+            if temp_key_path.exists():
+                temp_key_path.unlink()
 
     print("[HTTPS Server] Stopped.")
 

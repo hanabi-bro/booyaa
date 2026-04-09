@@ -198,6 +198,10 @@ def run_download(
                 if not data:
                     break
                 stats.add_recv(len(data))
+            except http.client.IncompleteRead as e:
+                # Server disconnected during chunked transfer - normal when server stops
+                print(f"[HTTPS Client] Server disconnected during transfer: {e}", file=sys.stderr)
+                break
             except (ConnectionResetError, BrokenPipeError, OSError, ssl.SSLError) as e:
                 print(f"[HTTPS Client] Data receive error: {e}", file=sys.stderr)
                 # Try to reconnect and resume
