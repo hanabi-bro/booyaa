@@ -64,10 +64,10 @@ class RichTrafficOutput:
         elif event_type == "DISCONNECT":
             base_style = self.style_disconnect
         elif event_type == "DATA":
-            # Check if transfer rates are below threshold
-            if bps_sent < self.threshold and bps_sent > 0:
+            # Check if transfer rates are below threshold (including zero)
+            if bps_sent < self.threshold:
                 base_style = self.style_warning
-            elif bps_recv < self.threshold and bps_recv > 0:
+            elif bps_recv < self.threshold:
                 base_style = self.style_warning
             else:
                 base_style = self.style_normal
