@@ -174,7 +174,7 @@ def run_client(args: argparse.Namespace) -> None:
     client_ip = get_source_ip(server_ip, server_port)
 
     # Initialize rich output handler
-    rich_output = RichTrafficOutput(threshold=args.threshold)
+    rich_output = RichTrafficOutput(threshold=args.threshold, use_table_format=args.table_format)
 
     # Create resilient socket with automatic reconnection
     server_info = (server_ip, server_port)
